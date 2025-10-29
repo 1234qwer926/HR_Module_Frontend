@@ -1,0 +1,78 @@
+.inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 3rem;
+}
+
+@media (max-width: 960px) {
+  .inner {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+.content {
+  max-width: 580px;
+}
+
+@media (max-width: 960px) {
+  .content {
+    max-width: 100%;
+  }
+}
+
+.title {
+  color: light-dark(var(--mantine-color-black), var(--mantine-color-white));
+  font-family: 'Outfit', var(--mantine-font-family);
+  font-size: 48px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .title {
+    font-size: 28px;
+  }
+}
+
+.control {
+  min-width: 160px;
+}
+
+@media (max-width: 480px) {
+  .control {
+    width: 100%;
+  }
+}
+
+.imageWrapper {
+  flex-shrink: 0;
+}
+
+@media (max-width: 960px) {
+  .imageWrapper {
+    display: none;
+  }
+}
+
+.image {
+  width: 420px;
+  height: auto;
+}
+
+.highlight {
+  position: relative;
+  background: linear-gradient(120deg, var(--mantine-color-blue-1) 0%, var(--mantine-color-cyan-1) 100%);
+  border-radius: var(--mantine-radius-sm);
+  padding: 4px 12px;
+  color: var(--mantine-color-blue-9);
+  font-weight: 700;
+}

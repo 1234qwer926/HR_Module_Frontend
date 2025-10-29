@@ -1,0 +1,19 @@
+/* AuthenticationForm.module.css (New file for custom responsive styles) */
+.formPaper {
+  margin-top: 20px !important;
+  margin-bottom: 20px !important;
+
+}
+
+@media (max-width: 425px) {
+  .formPaper {
+    margin-left: 5px !important;
+    margin-right: 5px !important;
+    padding-left: 10px !important;
+    /* Reduced padding for small screens; adjust as needed */
+    padding-right: 10px !important;
+    padding-top: 15px !important;
+    /* Optional: Adjust vertical padding */
+    padding-bottom: 15px !important;
+  }
+}

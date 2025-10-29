@@ -1,0 +1,25 @@
+.wrapper {
+  display: flex;
+  align-items: center;
+  color: var(--mantine-color-white);
+  padding: 0.5rem 0;
+}
+
+.icon {
+  margin-right: var(--mantine-spacing-md);
+  background-color: transparent;
+}
+
+.title {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+.description {
+  color: var(--mantine-color-white);
+  font-size: 0.95rem;
+  margin-top: 0.25rem;
+}

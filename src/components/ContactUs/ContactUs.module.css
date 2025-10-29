@@ -1,0 +1,92 @@
+.wrapper {
+  min-height: 500px;
+  background: linear-gradient(
+    135deg,
+    var(--mantine-color-blue-6) 0%,
+    var(--mantine-color-blue-8) 100%
+  );
+  border-radius: var(--mantine-radius-lg);
+  padding: calc(var(--mantine-spacing-xl) * 3);
+  margin: calc(var(--mantine-spacing-xl) * 3) 0;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+  .wrapper {
+    padding: calc(var(--mantine-spacing-xl) * 2);
+    margin: calc(var(--mantine-spacing-xl) * 2) 0;
+  }
+}
+
+.title {
+  font-family: 'Outfit', var(--mantine-font-family);
+  color: var(--mantine-color-white);
+  font-weight: 700;
+  font-size: 2.5rem;
+  line-height: 1.2;
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 2rem;
+  }
+}
+
+.description {
+  color: rgba(255, 255, 255, 0.9);
+  max-width: 400px;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .description {
+    max-width: 100%;
+  }
+}
+
+.form {
+  background-color: var(--mantine-color-white);
+  padding: calc(var(--mantine-spacing-xl) * 1.5);
+  border-radius: var(--mantine-radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.social {
+  color: var(--mantine-color-white);
+  transition: all 0.2s ease;
+}
+
+.social:hover {
+  color: var(--mantine-color-blue-1);
+  transform: translateY(-2px);
+}
+
+.input {
+  background-color: var(--mantine-color-white);
+  border-color: var(--mantine-color-gray-4);
+  color: var(--mantine-color-black);
+}
+
+.input:focus {
+  border-color: var(--mantine-color-blue-6);
+}
+
+.input::placeholder {
+  color: var(--mantine-color-gray-5);
+}
+
+.inputLabel {
+  color: var(--mantine-color-gray-8);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.control {
+  background: linear-gradient(135deg, var(--mantine-color-blue-6), var(--mantine-color-cyan-6));
+  border: none;
+}
+
+.control:hover {
+  background: linear-gradient(135deg, var(--mantine-color-blue-7), var(--mantine-color-cyan-7));
+}

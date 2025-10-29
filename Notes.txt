@@ -1,0 +1,317 @@
+Moodle – Open-source, highly customizable, widely used in universities.
+
+Blackboard Learn – Corporate + university LMS with strong assessment tools.
+
+Canvas LMS – Very modern, widely used in schools/universities, cloud-based.
+
+TalentLMS – Corporate-focused, good for employee training.
+
+Docebo – AI-driven LMS for enterprises.
+
+SAP Litmos – Used in large corporations, integrates with HR tools.
+
+
+git log --oneline
+git reset --hard e9d1b89    
+git restore .
+git clean -fd
+
+
+
+
+Moodle A highly customizable, open-source LMS that is popular in both educational and corporate settings.
+
+Absorb LMS A mobile-friendly platform designed for large enterprises, with a focus on employee training and development.
+
+EdApp A JavaScript-powered LMS that allows businesses to create microlearning courses and track employee performance.
+
+Docebo A comprehensive learning suite that uses AI to personalize the learning experience.
+
+360Learning An interactive and user-friendly platform that allows users to create and share their own courses and learning materials.
+
+SAP Litmos A cloud-based LMS that offers training solutions in various languages and industries.
+
+Adobe Captivate Prime An AI-powered, cloud-based LMS that focuses on delivering personalized learning experiences.
+
+
+
+
+Azure Ai Foundary:
+
+
+
+
+
+21 CFR Part 11 Compliance Checklist
+
+1. Validation and System Controls:
+   - Validation Documentation: Includes Installation Qualification (IQ), Operational Qualification (OQ), and Performance Qualification (PQ).
+   - System Access Control: Implements rate limiting, access controls for individuals, and role-based security to protect endpoints.
+   - Data Integrity: The system must have measures in place to ensure that data has not been altered during transmission from a device to the system.
+
+2. Audit Trails:
+   - Deletion Policy: Utilizes "soft deletes" (marking records as deleted) instead of "hard deletes" (permanent removal) to preserve record history.
+   - Change Logs: Maintains detailed logs of every change in the database, including a unique ID and the type of operation (Create, Read, Update, Delete).
+
+3. Electronic Signatures:
+   - 1. Uniqueness and Security:
+     - Each employee who interacts with the system is assigned a unique user ID and password, which serves as their electronic signature.
+     - Real-World Application: When a manager approves an SOP, they log in with unique credentials. The system ensures this user ID is never reassigned, guaranteeing that every action is tied to a specific individual.
+
+   - 2. Signature Linking:
+     - Once a record is signed, the electronic signature is permanently and securely linked to that specific version of the document.
+     - Real-World Application: The signature is a cryptographic binding of the signer's identity, the timestamp, and the document's content. Any alteration to the document post-signature would invalidate the signature. It cannot be copied to another document.
+
+   - 3. Signature Components:
+     - When a signed record is viewed or printed, the signature must be represented in a clear, human-readable format.
+     - Real-World Application: The system displays the signer's printed name ("John Smith"), the date and time ("August 22, 2025, 2:15 PM"), and the meaning of the signature ("Approved"), making the context clear.
+
+   - 4. Identity Verification:
+     - The system requires the user to re-authenticate themselves at the moment of signing to confirm their identity.
+     - Real-World Application: After clicking "Approve," a dialog box prompts the user to re-enter their password. This two-factor process (login + re-authentication) verifies the signer's identity.
+
+4. Record Management:
+   - 1. Record Generation and Copies:
+     - The system must be able to generate accurate and complete copies of electronic records in both human-readable (e.g., PDF) and electronic formats for inspection.
+     - Real-World Application: A lab technician enters results into a LIMS. For an FDA inspection, the LIMS must produce a complete PDF report (human-readable) and an electronic copy that preserves the original record's content and meaning.
+
+   - 2. Data Export:
+     - The system must support exporting records in standard formats to facilitate review, transfer, and long-term archival.
+     - Real-World Application: A biotech company needs to submit stability data. The LIMS can export this data as a PDF for easy review or as an XML/CSV file for data analysis and import into other systems. Using checksums can ensure data integrity during export.
+
+5. Documentation and Policies:
+   - 1. User and System Documentation:
+     - The vendor must provide comprehensive, controlled documentation for system operation, maintenance, and training.
+     - Real-World Application: This includes user manuals, admin guides for backups and security, and a formal change control process for the documentation itself, ensuring it always matches the validated system.
+
+   - 2. Written Policies:
+     - The organization must establish formal written policies that hold individuals accountable for actions taken under their electronic signatures.
+     - Real-World Application: The company creates an "Electronic Records and Signatures Policy" stating that credentials are the legal equivalent of a handwritten signature, passwords must not be shared, and individuals are accountable for all actions under their user ID.
+
+   - 3. Training:
+     - All personnel who use, maintain, or develop the system must be adequately trained, and this training must be documented.
+     - Real-World Application: A new engineer completes vendor-provided training, internal role-based training, and a review of the company's policies. This training is formally documented in their employee record as proof of qualification.
+
+
+
+
+Changes :
+
+Back navigation Icon and its functionality
+Home Should have anchor tag
+
+In Navigation course should not have the groups
+
+
+
+make api calls accordingly to the group insted of getting the enterprises groups data 
+Get the data for the Analytic Dashboard
+
+In Jotform Builder i also need a option to remove pages 
+Naviagation required when we click on the map assignment form in the course mangment
+
+
+Responsive ui:
+
+features in the nav hamburger aligned to the left
+paragraph under the key features of the pulse lms in the home page
+tables are overfolwing from the screen width
+
+Main Functions:
+
+Frontend :
+Assignment ui should have the instructions and the video recording for the jotform
+
+Backend:
+The Assignment and learning post data will be get updated in the results tab
+update the security functions :
+                                Authorization
+                                authentication
+                                Ratelimitting
+                                cors
+                                Sql injection
+                                firewalls
+                                csrf
+                                xss
+
+
+
+
+End points :
+Admindashboard:
+
+jotform : put request
+course : put request
+usermap: put request
+
+userdashboard:
+
+jotform: post request for learning and Assignment
+
+
+
+
+changes:
+
+Back Navigation in the Each card in LmsDashboard    --Done
+
+usermapping:
+update endpoint in the usermapping            
+Assign the multiple Batches to the group  
+
+jotform-managment:
+Update endpoint at the jortform creation      
+update the jortform elements to the each table that makes more effecient  
+
+subjectmangment:
+Each Topic should not fall in to another Subject  --done
+
+Coursemangment:
+update endpoint at the Coursemangment   
+
+After login Navigate to Dashboard according to the roles  --done
+Publish Result Button needed after check all the results then user will need to get the results
+
+Course Completion updation table --done
+validations for each Topic
+  
+Store the basic userDetails in the frontend local storage   --done
+
+clear all cokkies after logout          -done
+
+Certificate generation for the user after completion of each topic
+
+when the admin map the user then also change the user role to employee
+
+Add the Forgot password Functionality  
+
+update the security functions :
+                                Authorization   -done
+                                authentication  -done
+                                Ratelimitting
+                                cors            -done
+                                Sql injection   -done
+                                firewalls       --default available if we deploy in aws
+                                csrf            -done
+                                xss             -done                  
+
+
+
+Tuesday:
+Testing the backend Api on postman to get the jwt token and for all other end points
+stored the jwt token in the localstorage Frontend.
+Updated the Role Based Access for the user based on the group--Authorization
+
+
+Wednesday:
+created the Authentication Context to store the cokkiee globally .
+updated the Each endpoint in the frontend  based on the roles
+Meeting:Eduzen Lms 
+
+
+Thursday:
+Builded the Vitamin D camp frontend React App and backend Node App for the Reference.
+update the login  and logout functionality.
+stored the jwt token in the cokkies from the backend.
+updated Security Functionality :xss 
+                                cors
+
+
+
+Friday:
+  updated Security Functionality :csrf    
+
+  issue:when i click on the logout the cokkies are not getting cleared from the backend .
+  Reason:issue resolved because of path 
+
+  Deployed Frontend Application on Neltliy
+
+  Issue :Cokkies are not getting Stored in the Production frontend--Netlify --not solved
+  updated the Authentication for Frontend and backend ,reason Caching issue on the netlify 
+
+  checked the best practices for usertable connection to the main Application 
+
+  Back Navigation in the Each card in LmsDashboard  
+
+  Created the userdetails dto to get the usedetails
+
+Saturday:
+   Extracting the Group name from the usermapping and added to the userdetailsdto
+
+   Removed the relation between the usermapping and subject: case1-->if admin trys to map an 
+                                  unregistered user from api they wont get the use details
+                                                 case2-->if admin want to map an registered
+                                                  user there won't be a problem
+  updated the usergroupmapping and subject model-->Done changes to the both controllers 
+                                                  and service layers code                                                   
+   Issue:UserDetails are not getting fetched from the backend while testing on the postman
+            -->Gettting the userdetailsdto from the endpoint
+
+  created the updateuserDetails funtionality in both frontend and backend
+
+  if the user role are (EMPLOYEE or USER ) then user need to upadte the profile if the DOJ is 
+                                      not present--navigat to updateuser profile frontend page
+                                      --else if the user have DOJ and the role as EMPLOYEE 
+                                            navigate to content
+  updated the code for the each userdetails in local storage and user context global state
+
+  Another case --Admin Updated the usermapiing but still the user looged in to the system 
+                --then the  details are not updated in the localstorage and user context global state for the user
+                --solution ,user need to relogin to the system. 
+
+Monday:
+
+    Issue:In Subject controller user cant able to get the data 
+          done changes group name type issue and  role based access controls  
+
+  created the coursecompletion table and related to usertable 
+  while user click on submit in the learning material the course completion table will get updated.
+  updated the controllers,service and repo layers which are related to coursecompletion modal,and also updated the frontend.
+
+  Edge cases: removed the groupname which is getting updated from the userdetails from the localstorage,where user 
+              will have list of groupnames.
+
+  One topic need not fall in multiple subjects.--done
+
+  Tuesday:
+    while creating the new DB and using it, making the login error --made changes to the frontend and the backend
+    --issue not resolved 
+    
+
+
+
+
+  UserDetails Update Functionality  -done
+  CourseCompletion table      -done
+  One Topic Shouldn't Fall in to Another Subject -done
+  Certficated Geration and get Access it from the Aws s3 storage  -done
+  Validation for Each Topic  -done
+  Score Publish Functionality
+  Forgot Password Functionality
+  One student should be allowed to multiple Batches
+  UserMapping Update endpoint -done
+  JotForm Update endpoint
+  CourseMAngment UpdateEndpoint -done
+
+
+
+Improvment : update the JortForm Content Table to each seperate tables for Each element.
+
+
+changes:
+
+update the content type in the architecture   -Done
+Two options in admin to be removed  --DONE
+page count in the screen   --done
+progression bar for assignment   --done 
+progression bar for learning   -done
+time per page  in assignment  --done 
+record starts in 5 4 3 2 1 --done
+video recording time  -done
+
+
+course completion status and score
+       
+
+
+
