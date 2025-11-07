@@ -37,6 +37,10 @@ import VideoReview from './VideoInterview/VideoReview';
 import JobApplications from './Jobs/JobApplications';
 // import ApplicationDetails from './Applications/ApplicationDetails';
 
+import CATExam from './CAT/CATExam';
+import ExamComplete from './CAT/ExamComplete';
+import ExamLogin from './CAT/ExamLogin';
+
 function App() {
   return (
     <div>
@@ -78,6 +82,11 @@ function App() {
 
         <Route path="/jobs/:id/applications" element={<JobApplications />} />
         <Route path="/applications/:applicationId" element={<ApplicationDetails />} />
+
+        {/* CAT EXAM */}
+         <Route path="/exam/login" element={<ExamLogin />} />
+        <Route path="/exam" element={<CATExam />} />
+        <Route path="/exam/complete" element={<ExamComplete />} />
 
         {/* ============ FALLBACK ============ */}
         <Route path="*" element={<Navigate to="/" replace />} />
