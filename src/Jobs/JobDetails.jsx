@@ -1,12 +1,13 @@
+// src/pages/JobDetails.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Container, Paper, Title, Text, Badge, Button, Stack, Group, 
-  Divider, Loader, Alert, Grid, Accordion
+import {
+  Container, Paper, Title, Text, Badge, Button, Stack, Group,
+  Divider, Loader, Alert, Grid, Accordion, Modal
 } from '@mantine/core';
-import { 
-  IconBriefcase, IconMapPin, IconClock, IconAlertCircle, 
-  IconCircleCheck, IconUsers, IconCurrencyDollar 
+import {
+  IconBriefcase, IconMapPin, IconClock, IconAlertCircle,
+  IconCircleCheck, IconUsers, IconCurrencyDollar, IconTrash, IconPencil, IconListCheck
 } from '@tabler/icons-react';
 
 export default function JobDetails() {
@@ -15,29 +16,33 @@ export default function JobDetails() {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // ===== FIXED: Public applications allowed (no role check for applying) =====
+
+  // Public applications allowed (no role check for applying)
   const userRole = localStorage.getItem('role');
   const isLoggedIn = !!localStorage.getItem('token');
 
+  // Delete modal state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     fetchJobDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchJobDetails = async () => {
     try {
       const response = await fetch(`http://localhost:8000/jobs/${id}`);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log('Job details:', data);
         setJob(data);
       } else {
         setError('Job not found');
       }
-    } catch (error) {
+    } catch (err) {
       setError('Error loading job details');
-      console.error('Error:', error);
+      // eslint-disable-next-line no-console
+      console.error('Error:', err);
     } finally {
       setLoading(false);
     }
@@ -58,6 +63,42 @@ export default function JobDetails() {
       case 'medium': return 'yellow';
       case 'low': return 'gray';
       default: return 'blue';
+    }
+  };
+
+  const handleViewApplications = () => {
+    if (!job) return;
+    navigate(`/jobs/${job.id}/applications`);
+  };
+
+  const handleEditJob = () => {
+    if (!job) return;
+    navigate(`/jobs/edit/${job.id}`);
+  };
+
+  const handleRequestDelete = () => {
+    setDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!job) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`http://localhost:8000/jobs/${job.id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        // Navigate back to jobs with a flag so list page can show a toast/alert if desired
+        navigate('/jobs', { state: { deleted: true, title: job.title } });
+      } else {
+        const text = await res.text();
+        setError(text || 'Failed to delete job');
+      }
+    } catch (e) {
+      setError('Network error while deleting job');
+    } finally {
+      setDeleting(false);
+      setDeleteOpen(false);
     }
   };
 
@@ -84,6 +125,28 @@ export default function JobDetails() {
 
   return (
     <Container size="lg" py="xl">
+      {/* Delete confirmation modal */}
+      <Modal
+        opened={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title="Confirm deletion"
+        centered
+      >
+        <Stack gap="sm">
+          <Text>
+            This action will permanently delete the job “{job.title}”. Are you sure you want to continue?
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button color="red" loading={deleting} onClick={handleConfirmDelete} leftSection={<IconTrash size={16} />}>
+              Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
       <Paper shadow="sm" p="xl" radius="md" withBorder>
         <Stack gap="lg">
           {/* HEADER */}
@@ -99,10 +162,10 @@ export default function JobDetails() {
               </div>
               <Group gap="md">
                 <Badge size="lg" color={getStatusColor(job.status)}>
-                  {job.status.toUpperCase()}
+                  {job.status?.toUpperCase()}
                 </Badge>
                 <Badge size="lg" color={getPriorityColor(job.priority)} variant="light">
-                  {job.priority.toUpperCase()} Priority
+                  {job.priority?.toUpperCase()} Priority
                 </Badge>
               </Group>
             </Group>
@@ -125,7 +188,7 @@ export default function JobDetails() {
             <Grid.Col span={6}>
               <Group gap="xs">
                 <IconClock size={20} />
-                <Text>Posted: {new Date(job.posted_at).toLocaleDateString()}</Text>
+                <Text>Posted: {job.posted_at ? new Date(job.posted_at).toLocaleDateString() : '-'}</Text>
               </Group>
             </Grid.Col>
             <Grid.Col span={6}>
@@ -351,7 +414,7 @@ export default function JobDetails() {
                   <Stack gap="xs">
                     <Group gap="sm">
                       <Text c="dimmed" size="sm">Posted:</Text>
-                      <Text size="sm">{new Date(job.posted_at).toLocaleDateString()}</Text>
+                      <Text size="sm">{job.posted_at ? new Date(job.posted_at).toLocaleDateString() : '-'}</Text>
                     </Group>
                     {job.application_deadline && (
                       <Group gap="sm">
@@ -367,32 +430,45 @@ export default function JobDetails() {
 
           <Divider />
 
-          {/* ===== FIXED: ACTION BUTTONS - ALLOW PUBLIC APPLICATIONS ===== */}
-          <Group justify="space-between">
+          {/* ACTION BUTTONS */}
+          <Group justify="space-between" wrap="wrap">
             <Button variant="subtle" onClick={() => navigate('/jobs')}>
               Back to Jobs
             </Button>
-            
+
             {userRole === 'hr' && (
               <Group>
-                <Button 
+                <Button
                   variant="light"
-                  onClick={() => navigate(`/jobs/edit/${job.id}`)}
+                  onClick={handleEditJob}
+                  leftSection={<IconPencil size={16} />}
                 >
                   Edit Job
                 </Button>
-                <Button 
-                  onClick={() => navigate(`/hr/applications?job_id=${job.id}`)}
+
+                <Button
+                  variant="light"
+                  onClick={handleViewApplications}
+                  leftSection={<IconListCheck size={16} />}
                 >
                   View Applications
                 </Button>
+
+                <Button
+                  color="red"
+                  variant="outline"
+                  onClick={handleRequestDelete}
+                  leftSection={<IconTrash size={16} />}
+                >
+                  Delete Job
+                </Button>
               </Group>
             )}
-            
-            {/* FIXED: Public applications - anyone can apply (no login required) */}
+
+            {/* Public applications - anyone can apply (no login required) */}
             {job.status === 'open' && (
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 onClick={() => navigate(`/apply/${job.id}`)}
                 color="green"
               >
@@ -400,10 +476,9 @@ export default function JobDetails() {
               </Button>
             )}
 
-            {/* Show closed message if job is closed */}
             {job.status === 'closed' && (
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 disabled
                 color="gray"
               >
@@ -414,7 +489,7 @@ export default function JobDetails() {
 
           {/* INFO MESSAGE FOR PUBLIC APPLICATIONS */}
           <Alert color="blue" title="Public Application">
-            This is an open position. You can apply without creating an account. 
+            This is an open position. You can apply without creating an account.
             Just fill in your details on the application form.
           </Alert>
         </Stack>

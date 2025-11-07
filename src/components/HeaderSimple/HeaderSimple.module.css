@@ -1,13 +1,12 @@
 .header {
   height: 64px;
   margin-bottom: 0;
-  background-color: var(--mantine-color-body);
-  border-bottom: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  border-bottom: 1px solid var(--mantine-color-default-border);
   position: sticky;
   top: 0;
   z-index: 100;
   backdrop-filter: blur(10px);
-  background-color: light-dark(rgba(255, 255, 255, 0.95), rgba(26, 27, 30, 0.95));
+  background-color: var(--mantine-color-body);
 }
 
 .inner {
@@ -35,7 +34,7 @@
 .logoText {
   font-size: 1.25rem;
   font-weight: 700;
-  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
+  color: var(--mantine-color-text);
   font-family: 'Outfit', var(--mantine-font-family);
   white-space: nowrap;
 }
@@ -47,7 +46,7 @@
   padding: 10px 12px;
   border-radius: var(--mantine-radius-md);
   text-decoration: none;
-  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-0));
+  color: var(--mantine-color-text);
   font-size: var(--mantine-font-size-sm);
   font-weight: 500;
   transition: all 0.15s ease;
@@ -55,13 +54,13 @@
 }
 
 .link:hover {
-  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
-  color: light-dark(var(--mantine-color-blue-6), var(--mantine-color-blue-4));
+  background-color: var(--mantine-color-default-hover);
+  color: var(--mantine-primary-color-filled);
 }
 
 [data-mantine-color-scheme] .link[data-active] {
-  background-color: var(--mantine-color-blue-light);
-  color: var(--mantine-color-blue-7);
+  background-color: var(--mantine-primary-color-light);
+  color: var(--mantine-primary-color-filled);
   font-weight: 600;
 }
 

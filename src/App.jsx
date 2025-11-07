@@ -33,6 +33,10 @@ import VideoQuestionList from './VideoInterview/VideoQuestionList';
 import VideoRecorder from './VideoInterview/VideoRecorder';
 import VideoReview from './VideoInterview/VideoReview';
 
+
+import JobApplications from './Jobs/JobApplications';
+// import ApplicationDetails from './Applications/ApplicationDetails';
+
 function App() {
   return (
     <div>
@@ -72,8 +76,12 @@ function App() {
         <Route path="/video/record/:questionId" element={<VideoRecorder />} />
         <Route path="/video/review/:applicationId" element={<VideoReview />} />
 
+        <Route path="/jobs/:id/applications" element={<JobApplications />} />
+        <Route path="/applications/:applicationId" element={<ApplicationDetails />} />
+
         {/* ============ FALLBACK ============ */}
         <Route path="*" element={<Navigate to="/" replace />} />
+
       </Routes>
       <FooterLinks />
       <GeminiChatModal />
