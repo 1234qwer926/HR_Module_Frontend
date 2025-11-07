@@ -7,7 +7,7 @@ import { IconAlertCircle, IconCheck } from '@tabler/icons-react';
 import axios from 'axios';
 import { useAuth } from '../../AuthContext';
 
-export function AuthenticationForm(props) {
+export function AuthenticationForm() {
     const [type, toggle] = useToggle(['login', 'register']);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);

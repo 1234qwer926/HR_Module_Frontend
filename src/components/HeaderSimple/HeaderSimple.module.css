@@ -24,7 +24,12 @@
   align-items: center;
   gap: 0.75rem;
   cursor: pointer;
-  flex-shrink: 0; /* Prevent logo from shrinking */
+  flex-shrink: 0;
+  transition: opacity 0.2s ease;
+}
+
+.logo:hover {
+  opacity: 0.8;
 }
 
 .logoText {
@@ -32,7 +37,7 @@
   font-weight: 700;
   color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
   font-family: 'Outfit', var(--mantine-font-family);
-  white-space: nowrap; /* Prevent text wrapping */
+  white-space: nowrap;
 }
 
 /* Desktop Navigation Links */
@@ -57,6 +62,7 @@
 [data-mantine-color-scheme] .link[data-active] {
   background-color: var(--mantine-color-blue-light);
   color: var(--mantine-color-blue-7);
+  font-weight: 600;
 }
 
 /* Mobile Drawer Styles */
@@ -73,9 +79,35 @@
   font-family: 'Outfit', var(--mantine-font-family);
 }
 
+/* User Info in Mobile Drawer */
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-6));
+  border-radius: var(--mantine-radius-md);
+  border-left: 3px solid var(--mantine-color-blue-6);
+}
+
+.userName {
+  font-size: 1rem;
+  font-weight: 600;
+  color: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
+}
+
+.userRole {
+  font-size: 0.75rem;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+  text-transform: uppercase;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
 /* Mobile Navigation Links */
 .mobileLink {
-  display: block;
+  display: flex;
+  align-items: center;
   padding: 14px 16px;
   border-radius: var(--mantine-radius-md);
   text-decoration: none;
@@ -137,5 +169,13 @@
   .logo svg {
     width: 28px;
     height: 28px;
+  }
+
+  .userName {
+    font-size: 0.9rem;
+  }
+
+  .userRole {
+    font-size: 0.7rem;
   }
 }

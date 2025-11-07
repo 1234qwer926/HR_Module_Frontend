@@ -68,7 +68,7 @@ export function FooterLinks() {
               <path d="M16 8L20 12H18V20H14V12H12L16 8Z" fill="white"/>
               <rect x="10" y="22" width="12" height="2" rx="1" fill="white"/>
             </svg>
-            <Text size="xl" fw={700} className={classes.logoText}>RecruitAI</Text>
+            <Text size="xl" fw={700} className={classes.logoText}>PulseAI</Text>
           </div>
           <Text size="sm" c="dimmed" className={classes.description}>
             AI-powered recruitment platform streamlining hiring with adaptive testing, 
@@ -79,7 +79,7 @@ export function FooterLinks() {
       </Container>
       <Container className={classes.afterFooter} size="lg">
         <Text c="dimmed" size="sm">
-          © 2025 RecruitAI. All rights reserved.
+          © 2025 PulseAI. All rights reserved.
         </Text>
 
         <Group gap={8} className={classes.social} justify="flex-end" wrap="nowrap">

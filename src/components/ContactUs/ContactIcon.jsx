@@ -20,7 +20,7 @@ function ContactIcon({ icon: Icon, title, description, ...others }) {
 }
 
 const MOCKDATA = [
-  { title: 'Email', description: 'support@recruitai.com', icon: IconAt },
+  { title: 'Email', description: 'support@PulseAI.com', icon: IconAt },
   { title: 'Phone', description: '+91 (800) 555 1234', icon: IconPhone },
   { title: 'Address', description: 'Bangalore, Karnataka, India', icon: IconMapPin },
   { title: 'Support Hours', description: '9 AM – 6 PM IST (Mon-Fri)', icon: IconClock },
