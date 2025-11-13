@@ -7,6 +7,8 @@ import {FooterLinks} from './components/FooterLinks/FooterLinks';
 import GeminiChatModal from './components/GeminiChatModal';
 import Home from './components/Home/Home';
 
+
+
 // Auth
 import {AuthenticationForm} from './components/AuthenticationForm/AuthenticationForm';
 
@@ -40,6 +42,10 @@ import JobApplications from './Jobs/JobApplications';
 import CATExam from './CAT/CATExam';
 import ExamComplete from './CAT/ExamComplete';
 import ExamLogin from './CAT/ExamLogin';
+
+import HRVideoExamLogin from './HrVideoExam/HRVideoExamLogin';
+
+
 
 function App() {
   return (
@@ -91,6 +97,8 @@ function App() {
         {/* ============ FALLBACK ============ */}
         <Route path="*" element={<Navigate to="/" replace />} />
 
+
+        <Route path="/hr-video-exam" element={<HRVideoExamLogin />} />
       </Routes>
       <FooterLinks />
       <GeminiChatModal />

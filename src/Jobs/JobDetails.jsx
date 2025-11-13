@@ -3,12 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container, Paper, Title, Text, Badge, Button, Stack, Group,
-  Divider, Loader, Alert, Grid, Accordion, Modal
+  Divider, Loader, Alert, Grid, Accordion, Modal, MultiSelect,
+  Table, ActionIcon
 } from '@mantine/core';
 import {
   IconBriefcase, IconMapPin, IconClock, IconAlertCircle,
-  IconCircleCheck, IconUsers, IconCurrencyDollar, IconTrash, IconPencil, IconListCheck
+  IconCircleCheck, IconUsers, IconCurrencyDollar, IconTrash,
+  IconPencil, IconListCheck, IconVideo, IconPlus, IconX
 } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 
 export default function JobDetails() {
   const { id } = useParams();
@@ -25,8 +28,19 @@ export default function JobDetails() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Video questions state
+  const [videoQuestionsModalOpen, setVideoQuestionsModalOpen] = useState(false);
+  const [allVideoQuestions, setAllVideoQuestions] = useState([]);
+  const [assignedVideoQuestions, setAssignedVideoQuestions] = useState([]);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState([]);
+  const [loadingVideoQuestions, setLoadingVideoQuestions] = useState(false);
+  const [assigningQuestions, setAssigningQuestions] = useState(false);
+
   useEffect(() => {
     fetchJobDetails();
+    if (userRole === 'hr') {
+      fetchAssignedVideoQuestions();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -45,6 +59,177 @@ export default function JobDetails() {
       console.error('Error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Assigned questions for a job
+  const fetchAssignedVideoQuestions = async () => {
+    try {
+      const response = await fetch(`http://localhost:8000/jobs/${id}/video-questions`);
+      if (response.ok) {
+        const data = await response.json();
+        // Support both array and { video_questions: [] } shapes
+        const list = Array.isArray(data) ? data : (data.video_questions || []);
+        setAssignedVideoQuestions(list);
+      } else {
+        // Non-fatal: show notification
+        notifications.show({
+          title: 'Warning',
+          message: 'Could not load assigned video questions',
+          color: 'yellow',
+        });
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Error fetching assigned video questions:', err);
+      notifications.show({
+        title: 'Error',
+        message: 'Network error while loading assigned video questions',
+        color: 'red',
+      });
+    }
+  };
+
+  // All available questions
+  const fetchAllVideoQuestions = async () => {
+    setLoadingVideoQuestions(true);
+    try {
+      const response = await fetch('http://localhost:8000/video-questions?active_only=true');
+      if (response.ok) {
+        const data = await response.json();
+        setAllVideoQuestions(data || []);
+      } else {
+        notifications.show({
+          title: 'Error',
+          message: 'Failed to load video questions',
+          color: 'red',
+        });
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Error fetching video questions:', err);
+      notifications.show({
+        title: 'Error',
+        message: 'Network error while loading video questions',
+        color: 'red',
+      });
+    } finally {
+      setLoadingVideoQuestions(false);
+    }
+  };
+
+  const handleOpenVideoQuestionsModal = async () => {
+    setVideoQuestionsModalOpen(true);
+    await fetchAllVideoQuestions();
+    // Pre-select already assigned IDs
+    const assignedIds = assignedVideoQuestions.map((q) => q.id?.toString());
+    setSelectedQuestionIds(assignedIds.filter(Boolean));
+  };
+
+  const handleAssignVideoQuestions = async () => {
+    if (selectedQuestionIds.length === 0) {
+      notifications.show({
+        title: 'Warning',
+        message: 'Please select at least one video question',
+        color: 'yellow',
+      });
+      return;
+    }
+
+    setAssigningQuestions(true);
+
+    try {
+      const currentlyAssignedIds = assignedVideoQuestions.map((q) => q.id);
+      const toAdd = selectedQuestionIds
+        .map((s) => parseInt(s, 10))
+        .filter((qid) => !currentlyAssignedIds.includes(qid));
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (let i = 0; i < toAdd.length; i++) {
+        const questionId = toAdd[i];
+        try {
+          const resp = await fetch('http://localhost:8000/job-video-questions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              job_id: parseInt(id, 10),
+              video_question_id: questionId,
+              display_order: (assignedVideoQuestions?.length || 0) + i,
+            }),
+          });
+
+          if (resp.ok) {
+            successCount += 1;
+          } else {
+            errorCount += 1;
+          }
+        } catch {
+          errorCount += 1;
+        }
+      }
+
+      if (successCount > 0) {
+        notifications.show({
+          title: 'Success',
+          message: `Assigned ${successCount} video question(s)`,
+          color: 'green',
+        });
+      }
+      if (errorCount > 0) {
+        notifications.show({
+          title: 'Partial',
+          message: `${errorCount} question(s) could not be assigned`,
+          color: 'yellow',
+        });
+      }
+
+      await fetchAssignedVideoQuestions();
+      setVideoQuestionsModalOpen(false);
+    } catch {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to assign video questions',
+        color: 'red',
+      });
+    } finally {
+      setAssigningQuestions(false);
+    }
+  };
+
+  const handleRemoveVideoQuestion = async (questionId) => {
+    if (!window.confirm('Remove this video question from this job?')) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/job-video-questions/${id}/${questionId}`,
+        { method: 'DELETE', headers: { 'Content-Type': 'application/json' } }
+      );
+
+      if (response.ok) {
+        notifications.show({
+          title: 'Removed',
+          message: 'Video question removed from job',
+          color: 'green',
+        });
+        await fetchAssignedVideoQuestions();
+      } else {
+        const data = await response.json().catch(() => ({}));
+        notifications.show({
+          title: 'Error',
+          message: data.detail || 'Failed to remove video question',
+          color: 'red',
+        });
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Error removing video question:', err);
+      notifications.show({
+        title: 'Error',
+        message: 'Network error while removing video question',
+        color: 'red',
+      });
     }
   };
 
@@ -147,6 +332,58 @@ export default function JobDetails() {
         </Stack>
       </Modal>
 
+      {/* Video Questions Assignment Modal */}
+      <Modal
+        opened={videoQuestionsModalOpen}
+        onClose={() => setVideoQuestionsModalOpen(false)}
+        title="Assign Video Interview Questions"
+        size="lg"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            Select the video questions that candidates should answer for this position.
+          </Text>
+
+          {loadingVideoQuestions ? (
+            <Group justify="center" p="xl">
+              <Loader size="md" />
+            </Group>
+          ) : (
+            <MultiSelect
+              label="Select Video Questions"
+              placeholder="Choose questions from the library"
+              data={(allVideoQuestions || []).map((q) => ({
+                value: q.id?.toString(),
+                label: `${q.question_text} (${q.duration_seconds}s)`,
+              }))}
+              value={selectedQuestionIds}
+              onChange={setSelectedQuestionIds}
+              searchable
+              clearable
+              maxDropdownHeight={300}
+            />
+          )}
+
+          <Alert color="blue" title="Info">
+            Currently assigned: {assignedVideoQuestions.length} question(s)
+          </Alert>
+
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setVideoQuestionsModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAssignVideoQuestions}
+              loading={assigningQuestions}
+              leftSection={<IconPlus size={16} />}
+            >
+              Assign Selected Questions
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
       <Paper shadow="sm" p="xl" radius="md" withBorder>
         <Stack gap="lg">
           {/* HEADER */}
@@ -200,6 +437,73 @@ export default function JobDetails() {
           </Grid>
 
           <Divider />
+
+          {/* HR ONLY: Assigned Video Questions Section */}
+          {userRole === 'hr' && (
+            <>
+              <Paper p="md" withBorder radius="md">
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Group gap="xs">
+                      <IconVideo size={20} />
+                      <Text fw={600} size="lg">Video Interview Questions</Text>
+                      <Badge size="sm" color="blue">
+                        {assignedVideoQuestions.length} Assigned
+                      </Badge>
+                    </Group>
+                    <Button
+                      leftSection={<IconPlus size={16} />}
+                      onClick={handleOpenVideoQuestionsModal}
+                      size="sm"
+                    >
+                      Manage Questions
+                    </Button>
+                  </Group>
+
+                  {assignedVideoQuestions.length > 0 ? (
+                    <Table striped highlightOnHover withRowBorders={false}>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th style={{ width: 60 }}>#</Table.Th>
+                          <Table.Th>Question</Table.Th>
+                          <Table.Th style={{ width: 130 }}>Duration</Table.Th>
+                          <Table.Th style={{ width: 90 }}>Actions</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {assignedVideoQuestions.map((q, index) => (
+                          <Table.Tr key={q.id ?? `${q.video_question_id}-${index}`}>
+                            <Table.Td>{index + 1}</Table.Td>
+                            <Table.Td>{q.question_text}</Table.Td>
+                            <Table.Td>
+                              <Badge size="sm" variant="light">
+                                {q.duration_seconds}s
+                              </Badge>
+                            </Table.Td>
+                            <Table.Td>
+                              <ActionIcon
+                                color="red"
+                                variant="subtle"
+                                onClick={() => handleRemoveVideoQuestion(q.id ?? q.video_question_id)}
+                                aria-label="Remove question"
+                              >
+                                <IconX size={16} />
+                              </ActionIcon>
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  ) : (
+                    <Alert color="yellow" title="No Questions Assigned">
+                      No video interview questions have been assigned to this job yet. Click “Manage Questions” to assign questions from the library.
+                    </Alert>
+                  )}
+                </Stack>
+              </Paper>
+              <Divider />
+            </>
+          )}
 
           {/* MAIN CONTENT GRID */}
           <Grid>
