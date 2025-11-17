@@ -11,7 +11,7 @@ import {
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 
-// Helper: Proper title case in JS
+// Helper: Title case
 const toTitleCase = (str) => {
   if (!str) return '-';
   return str
@@ -20,13 +20,13 @@ const toTitleCase = (str) => {
     .replace(/\b\w/g, (l) => l.toUpperCase());
 };
 
-// Map backend/current values to display
+// Map backend stage → UI display
 const displayStage = (stage) => {
   const map = {
     applied: 'Applied',
     screening: 'Screening',
     aptitude: 'Aptitude',
-    'video hr': 'Video HR', // handle space variant from backend
+    'video hr': 'Video HR',
     video_hr: 'Video HR',
     final_interview: 'Final Interview',
     offer: 'Offer',
@@ -36,11 +36,15 @@ const displayStage = (stage) => {
   return map[stage] || toTitleCase(stage || '');
 };
 
-// Normalize UI value to API expected value for simple endpoint
+// Normalize UI → API (for simple endpoint)
 const normalizeStatusForAPI = (s) => {
   if (!s) return '';
-  if (s === 'video_hr' || s === 'videohr') return 'video hr';
-  return s;
+  const map = {
+    video_hr: 'video hr',
+    videohr: 'video hr',
+    final_interview: 'final interview',
+  };
+  return map[s] || s;
 };
 
 export default function JobApplications() {
@@ -63,13 +67,14 @@ export default function JobApplications() {
   const [selectedApps, setSelectedApps] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
 
-  // Modal
+  // Modal state
   const [modalOpened, setModalOpened] = useState(false);
   const [bulkStage, setBulkStage] = useState('');
   const [bulkMessage, setBulkMessage] = useState('');
   const [bulkSendEmail, setBulkSendEmail] = useState(true);
   const [bulkUpdating, setBulkUpdating] = useState(false);
 
+  // Fetch job
   const fetchJob = async () => {
     setJobLoading(true);
     try {
@@ -82,6 +87,7 @@ export default function JobApplications() {
     }
   };
 
+  // Fetch applications
   const fetchApplications = async () => {
     setLoading(true);
     try {
@@ -104,26 +110,19 @@ export default function JobApplications() {
     fetchApplications();
   }, [id]);
 
-  // Processed applications: filter + sort + top N
+  // Processed apps: filter + sort + top N
   const processedApps = useMemo(() => {
     let filtered = [...applications];
 
     if (statusFilter.length > 0) {
-      filtered = filtered.filter(
-        (app) => app.current_stage && statusFilter.includes(app.current_stage)
-      );
+      filtered = filtered.filter(app => app.current_stage && statusFilter.includes(app.current_stage));
     }
 
     filtered.sort((a, b) => {
       let aVal = a[sortBy] ?? 0;
       let bVal = b[sortBy] ?? 0;
 
-      if (typeof aVal === 'string') aVal = bVal = 0;
-      if (
-        sortBy.includes('score') ||
-        sortBy === 'cat_theta' ||
-        sortBy === 'cat_percentile'
-      ) {
+      if (sortBy.includes('score') || sortBy === 'cat_theta' || sortBy === 'cat_percentile') {
         aVal = parseFloat(aVal) || 0;
         bVal = parseFloat(bVal) || 0;
       } else if (sortBy === 'applied_at') {
@@ -140,15 +139,16 @@ export default function JobApplications() {
   // Auto-select top N
   useEffect(() => {
     if (topN > 0 && processedApps.length > 0) {
-      setSelectedApps(processedApps.slice(0, topN).map((a) => a.id));
+      setSelectedApps(processedApps.slice(0, topN).map(a => a.id));
     }
   }, [processedApps, topN]);
 
+  // Bulk update handler
   const handleBulkUpdate = async () => {
     if (selectedApps.length === 0 || !bulkStage) {
       notifications.show({
         title: 'Error',
-        message: 'Select candidates and stage',
+        message: 'Please select candidates and a stage',
         color: 'red',
       });
       return;
@@ -156,48 +156,70 @@ export default function JobApplications() {
 
     setBulkUpdating(true);
     try {
-      // Build query params for the SIMPLE endpoint: app_ids and new_status as query params
-      const params = new URLSearchParams();
-      selectedApps.forEach((id) => params.append('app_ids', String(id)));
-      params.append('new_status', normalizeStatusForAPI(bulkStage));
-      const url = `http://localhost:8000/applications/bulk-status-simple?${params.toString()}`;
+      // Query params: new_status, send_email, custom_message
+      const queryParams = new URLSearchParams();
+      queryParams.append('new_status', normalizeStatusForAPI(bulkStage));
+      queryParams.append('send_email', bulkSendEmail);
+      if (bulkMessage.trim()) {
+        queryParams.append('custom_message', bulkMessage.trim());
+      }
 
-      const res = await fetch(url, { method: 'PUT' });
+      const url = `http://localhost:8000/applications/bulk-status-simple?${queryParams.toString()}`;
 
-      if (!res.ok) throw new Error((await res.text()) || 'Update failed');
+      // Body: array of app_ids
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(selectedApps), // ← CRITICAL: app_ids in body
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || 'Update failed');
+      }
 
       notifications.show({
         title: 'Success!',
-        message: `Updated ${selectedApps.length} applications → ${toTitleCase(bulkStage)}`,
+        message: `Updated ${selectedApps.length} candidate(s) → ${toTitleCase(bulkStage)}`,
         color: 'green',
       });
 
+      // Reset modal
       setModalOpened(false);
-      fetchApplications();
+      setBulkStage('');
+      setBulkMessage('');
+      setBulkSendEmail(true);
       setSelectedApps([]);
       setSelectAll(false);
+
+      fetchApplications();
     } catch (e) {
-      notifications.show({ title: 'Error', message: e.message, color: 'red' });
+      notifications.show({
+        title: 'Update Failed',
+        message: e.message,
+        color: 'red',
+      });
     } finally {
       setBulkUpdating(false);
     }
   };
 
+  // Toggle sort
   const toggleSort = (field) => {
     if (sortBy === field) {
-      setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+      setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
     } else {
       setSortBy(field);
       setSortOrder('desc');
     }
   };
 
-  // Keep UI stage options; we normalize only when sending
+  // Stage options for UI
   const stageOptions = [
     { value: 'applied', label: 'Applied' },
     { value: 'screening', label: 'Screening' },
     { value: 'aptitude', label: 'Aptitude' },
-    { value: 'video_hr', label: 'Video HR' }, // will be sent as "video hr"
+    { value: 'video hr', label: 'Video HR' },
     { value: 'final_interview', label: 'Final Interview' },
     { value: 'offer', label: 'Offer' },
     { value: 'hired', label: 'Hired' },
@@ -297,53 +319,27 @@ export default function JobApplications() {
                     <Table.Th>
                       <Checkbox
                         checked={selectAll}
-                        indeterminate={
-                          selectedApps.length > 0 && selectedApps.length < processedApps.length
-                        }
+                        indeterminate={selectedApps.length > 0 && selectedApps.length < processedApps.length}
                         onChange={(e) => {
                           const checked = e.currentTarget.checked;
                           setSelectAll(checked);
-                          setSelectedApps(checked ? processedApps.map((a) => a.id) : []);
+                          setSelectedApps(checked ? processedApps.map(a => a.id) : []);
                         }}
                       />
                     </Table.Th>
-                    <Table.Th
-                      onClick={() => toggleSort('full_name')}
-                      style={{ cursor: 'pointer' }}
-                    >
+                    <Table.Th onClick={() => toggleSort('full_name')} style={{ cursor: 'pointer' }}>
                       Name{' '}
-                      {sortBy === 'full_name' &&
-                        (sortOrder === 'desc' ? (
-                          <IconSortDescending size={14} />
-                        ) : (
-                          <IconSortAscending size={14} />
-                        ))}
+                      {sortBy === 'full_name' && (sortOrder === 'desc' ? <IconSortDescending size={14} /> : <IconSortAscending size={14} />)}
                     </Table.Th>
                     <Table.Th>Email</Table.Th>
                     <Table.Th>Stage</Table.Th>
-                    <Table.Th
-                      onClick={() => toggleSort('resume_score')}
-                      style={{ cursor: 'pointer' }}
-                    >
+                    <Table.Th onClick={() => toggleSort('resume_score')} style={{ cursor: 'pointer' }}>
                       Resume Score{' '}
-                      {sortBy === 'resume_score' &&
-                        (sortOrder === 'desc' ? (
-                          <IconSortDescending size={14} />
-                        ) : (
-                          <IconSortAscending size={14} />
-                        ))}
+                      {sortBy === 'resume_score' && (sortOrder === 'desc' ? <IconSortDescending size={14} /> : <IconSortAscending size={14} />)}
                     </Table.Th>
-                    <Table.Th
-                      onClick={() => toggleSort('cat_theta')}
-                      style={{ cursor: 'pointer' }}
-                    >
+                    <Table.Th onClick={() => toggleSort('cat_theta')} style={{ cursor: 'pointer' }}>
                       CAT θ{' '}
-                      {sortBy === 'cat_theta' &&
-                        (sortOrder === 'desc' ? (
-                          <IconSortDescending size={14} />
-                        ) : (
-                          <IconSortAscending size={14} />
-                        ))}
+                      {sortBy === 'cat_theta' && (sortOrder === 'desc' ? <IconSortDescending size={14} /> : <IconSortAscending size={14} />)}
                     </Table.Th>
                     <Table.Th>Applied</Table.Th>
                     <Table.Th>Actions</Table.Th>
@@ -356,10 +352,10 @@ export default function JobApplications() {
                         <Checkbox
                           checked={selectedApps.includes(app.id)}
                           onChange={(e) => {
-                            setSelectedApps((prev) =>
+                            setSelectedApps(prev =>
                               e.currentTarget.checked
                                 ? [...prev, app.id]
-                                : prev.filter((id) => id !== app.id)
+                                : prev.filter(id => id !== app.id)
                             );
                           }}
                         />
@@ -418,7 +414,10 @@ export default function JobApplications() {
       {/* Bulk Update Modal */}
       <Modal
         opened={modalOpened}
-        onClose={() => setModalOpened(false)}
+        onClose={() => {
+          setModalOpened(false);
+          setBulkMessage('');
+        }}
         title={`Bulk Update ${selectedApps.length} Application${selectedApps.length > 1 ? 's' : ''}`}
         size="lg"
       >
@@ -433,7 +432,7 @@ export default function JobApplications() {
           />
           <Textarea
             label="Custom Email Message (Optional)"
-            placeholder="Thank you for your application..."
+            placeholder="Thank you for your interest..."
             value={bulkMessage}
             onChange={(e) => setBulkMessage(e.currentTarget.value)}
             minRows={4}
@@ -444,8 +443,13 @@ export default function JobApplications() {
             onChange={(e) => setBulkSendEmail(e.currentTarget.checked)}
           />
           {bulkStage === 'aptitude' && bulkSendEmail && (
-            <Alert color="blue" title="Exam Invite">
-              Exam keys will be auto-generated for the selected candidates.
+            <Alert color="blue" title="Auto Exam Key">
+              Unique 8-character keys will be generated and emailed.
+            </Alert>
+          )}
+          {bulkStage === 'video_hr' && bulkSendEmail && (
+            <Alert color="blue" title="Video HR Invite">
+              Video interview keys will be generated and sent.
             </Alert>
           )}
           <Group justify="flex-end" mt="md">
@@ -458,7 +462,7 @@ export default function JobApplications() {
               onClick={handleBulkUpdate}
               leftSection={<IconMailForward size={16} />}
             >
-              Update
+              Update & Notify
             </Button>
           </Group>
         </Stack>
