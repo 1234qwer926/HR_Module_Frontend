@@ -37,6 +37,7 @@ export default function ApplicationCreate() {
 
   // ===== FIXED: Use 0 or null for public applications (no candidate login required) =====
   const candidateId = parseInt(localStorage.getItem('userId'), 10) || null;
+  const [resume_path,set_resume_path]=useState("");
 
   const [formData, setFormData] = useState({
     job_id: parseInt(jobId, 10),
@@ -116,53 +117,25 @@ export default function ApplicationCreate() {
       const formDataUpload = new FormData();
       formDataUpload.append('file', file);
 
-      const response = await fetch('http://localhost:8000/applications/upload-resume', {
-        method: 'POST',
-        body: formDataUpload,
-      });
+      const uploadResponse = await fetch('http://localhost:8000/upload-to-s3', {
+      method: 'POST',
+      body: formDataUpload,
+    });
 
-      if (response.ok) {
-        const parsedData = await response.json();
+    const uploadResult = await uploadResponse.json();
+    console.log("S3 upload:", uploadResult);
 
-        // Normalize possibly non-array payloads into arrays of strings
-        const normalizeToArray = (val) => {
-          if (Array.isArray(val)) return val.map((s) => String(s).trim()).filter(Boolean);
-          if (typeof val === 'string')
-            return val
-              .split(/[;,]/)
-              .map((s) => s.trim())
-              .filter(Boolean);
-          return [];
-        };
+    // Save the S3 resume path
+    set_resume_path(uploadResult.key);
 
-        const normalizedSkills = normalizeToArray(parsedData.extracted_skills);
-        const normalizedCerts = normalizeToArray(parsedData.certifications);
-        const normalizedKeywords = normalizeToArray(parsedData.extracted_keywords);
+    setFormData((prev) => ({
+      ...prev,
+      resume_path: uploadResult.key,
+    }));
 
-        setFormData((prev) => ({
-          ...prev,
-          full_name: parsedData.parsed_data?.full_name || prev.full_name,
-          email: parsedData.parsed_data?.email || prev.email,
-          phone_number: parsedData.parsed_data?.phone_number || prev.phone_number,
-          technical_skills: normalizedSkills.length ? normalizedSkills : prev.technical_skills,
-          total_experience:
-            typeof parsedData.experience_years === 'number'
-              ? parsedData.experience_years
-              : prev.total_experience,
-          certifications: normalizedCerts.length ? normalizedCerts : prev.certifications,
-          resume_keywords: normalizedKeywords.length ? normalizedKeywords : prev.resume_keywords,
-          resume_path: parsedData.filename || prev.resume_path,
-        }));
+      
 
-        notifications.show({
-          title: 'Success',
-          message: 'Resume parsed successfully! Review and complete the form.',
-          color: 'green',
-          icon: <IconCheck size={16} />,
-        });
-      } else {
-        throw new Error('Failed to parse resume');
-      }
+     
     } catch (err) {
       console.error('Error parsing resume:', err);
       notifications.show({
@@ -216,6 +189,7 @@ export default function ApplicationCreate() {
       const submissionData = {
         ...formData,
         job_id: parseInt(jobId, 10),
+        resume_path:resume_path,
         candidate_id: candidateId, // Will be null for public applications
         date_of_birth: formData.date_of_birth
           ? new Date(formData.date_of_birth).toISOString().split('T')[0]
