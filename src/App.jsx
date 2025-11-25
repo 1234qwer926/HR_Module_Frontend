@@ -42,6 +42,7 @@ import JobApplications from './Jobs/JobApplications';
 import CATExam from './CAT/CATExam';
 import ExamComplete from './CAT/ExamComplete';
 import ExamLogin from './CAT/ExamLogin';
+import CATUpload from './CAT/CATUpload';
 
 import HRVideoExamLogin from './HrVideoExam/HRVideoExamLogin';
 
@@ -96,6 +97,7 @@ function App() {
 
         {/* ============ FALLBACK ============ */}
         <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/cat/upload" element={<CATUpload />} />
 
 
         <Route path="/hr-video-exam" element={<HRVideoExamLogin />} />

@@ -42,3 +42,18 @@ docker login
 docker push java-application-pulselms or push from the docker hub(before pushing create the name of image in the repo of hub)
 
 
+cat based questions (parameters) need to updated in the batabase  -Done(change the recalibration to 10 from 1 after testing)
+hr video completion after submit the exam complete --Done
+video recordings update path to the s3 bucket   
+
+bulk cat questions upload end point -Done
+bulk video questions upload endpoint -Done
+bulk applications upload endpoint
+keep the time limit to auto complete the testing
+authentication
+
+Frontend Major Changes
+    ai recognization model need to update in the frontend for cat based exam
+    and speech to text and text to speech convertions need to update in the frontend for the hr video exam
+    video hr Evaluation frontend page for the hr
+
