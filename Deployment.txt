@@ -48,7 +48,10 @@ video recordings update path to the s3 bucket
 
 bulk cat questions upload end point -Done
 bulk video questions upload endpoint -Done
-bulk applications upload endpoint
+bulk applications upload endpoint   
+POST /cat-items - Create a new CAT question -Done   
+PUT /cat-items/{item_id} - Update an existing CAT question -Done
+DELETE /cat-items/{item_id} - Delete a CAT question -Done
 keep the time limit to auto complete the testing
 authentication
 
@@ -56,4 +59,5 @@ Frontend Major Changes
     ai recognization model need to update in the frontend for cat based exam
     and speech to text and text to speech convertions need to update in the frontend for the hr video exam
     video hr Evaluation frontend page for the hr
+
 

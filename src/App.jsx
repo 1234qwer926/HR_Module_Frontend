@@ -27,6 +27,8 @@ import ApplicationList from './Applications/ApplicationList';
 import CATTest from './CAT/CATTest';
 import CATResults from './CAT/CATResults';
 
+import CATManagement from './CAT/CATManagement';
+
 // Dashboard
 import HRDashboard from './Dashboard/HRDashboard';
 
@@ -42,9 +44,11 @@ import JobApplications from './Jobs/JobApplications';
 import CATExam from './CAT/CATExam';
 import ExamComplete from './CAT/ExamComplete';
 import ExamLogin from './CAT/ExamLogin';
-import CATUpload from './CAT/CATUpload';
+
 
 import HRVideoExamLogin from './HrVideoExam/HRVideoExamLogin';
+
+import VideoQuestionsManagement from './HrVideoExam/VideoQuestionsManagement';
 
 
 
@@ -97,10 +101,11 @@ function App() {
 
         {/* ============ FALLBACK ============ */}
         <Route path="*" element={<Navigate to="/" replace />} />
-        <Route path="/cat/upload" element={<CATUpload />} />
+        <Route path="/cat/management" element={<CATManagement />} />  
 
 
         <Route path="/hr-video-exam" element={<HRVideoExamLogin />} />
+        <Route path="/hr-video-exam/questions-management" element={<VideoQuestionsManagement />} />
       </Routes>
       <FooterLinks />
       <GeminiChatModal />
