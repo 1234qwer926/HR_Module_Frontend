@@ -53,11 +53,12 @@ POST /cat-items - Create a new CAT question -Done
 PUT /cat-items/{item_id} - Update an existing CAT question -Done
 DELETE /cat-items/{item_id} - Delete a CAT question -Done
 keep the time limit to auto complete the testing
+bulk video evaluations 
 authentication
 
 Frontend Major Changes
     ai recognization model need to update in the frontend for cat based exam
     and speech to text and text to speech convertions need to update in the frontend for the hr video exam
-    video hr Evaluation frontend page for the hr
+    video hr Evaluation frontend page for the hr  --need changes like url of video and keep the evaluation in table format
 
 

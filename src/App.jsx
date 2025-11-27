@@ -3,14 +3,14 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Components
 import HeaderSimple from './components/HeaderSimple/HeaderSimple';
-import {FooterLinks} from './components/FooterLinks/FooterLinks';
+import { FooterLinks } from './components/FooterLinks/FooterLinks';
 import GeminiChatModal from './components/GeminiChatModal';
 import Home from './components/Home/Home';
 
 
 
 // Auth
-import {AuthenticationForm} from './components/AuthenticationForm/AuthenticationForm';
+import { AuthenticationForm } from './components/AuthenticationForm/AuthenticationForm';
 
 // Jobs
 import JobList from './Jobs/JobList';
@@ -47,8 +47,8 @@ import ExamLogin from './CAT/ExamLogin';
 
 
 import HRVideoExamLogin from './HrVideoExam/HRVideoExamLogin';
-
 import VideoQuestionsManagement from './HrVideoExam/VideoQuestionsManagement';
+import HRVideoExamEvaluation from './HrVideoExam/HRVideoExamEvaluation';
 
 
 
@@ -70,11 +70,11 @@ function App() {
         {/* ============ APPLICATIONS ROUTES ============ */}
         {/* Public application route - anyone can apply */}
         <Route path="/apply/:jobId" element={<ApplicationCreate />} />
-        
+
         {/* Application routes - candidates & HR */}
         <Route path="/applications" element={<ApplicationList />} />
         <Route path="/applications/:id" element={<ApplicationDetails />} />
-        
+
         {/* HR specific applications route */}
         <Route path="/hr/applications" element={<ApplicationList />} />
 
@@ -95,17 +95,18 @@ function App() {
         <Route path="/applications/:applicationId" element={<ApplicationDetails />} />
 
         {/* CAT EXAM */}
-         <Route path="/exam/login" element={<ExamLogin />} />
+        <Route path="/exam/login" element={<ExamLogin />} />
         <Route path="/exam" element={<CATExam />} />
         <Route path="/exam/complete" element={<ExamComplete />} />
 
         {/* ============ FALLBACK ============ */}
         <Route path="*" element={<Navigate to="/" replace />} />
-        <Route path="/cat/management" element={<CATManagement />} />  
+        <Route path="/cat/management" element={<CATManagement />} />
 
 
         <Route path="/hr-video-exam" element={<HRVideoExamLogin />} />
         <Route path="/hr-video-exam/questions-management" element={<VideoQuestionsManagement />} />
+        <Route path="/hr-video-exam/evaluation" element={<HRVideoExamEvaluation />} />
       </Routes>
       <FooterLinks />
       <GeminiChatModal />
