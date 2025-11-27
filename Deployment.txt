@@ -4,6 +4,23 @@ git restore .
 git clean -fd
 
 
+# exit venv if active
+deactivate
+
+# remove old venv folder (be careful!)
+Remove-Item -Recurse -Force .\myenv
+
+# create a fresh venv using your current user/python
+python -m venv myenv
+
+# activate and reinstall deps
+.\myenv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+# install dependencies
+python -m pip install "uvicorn[standard]" fastapi
+# or: python -m pip install -r requirements.txt
+python -m uvicorn main:app --reload
+
 
 
 
@@ -44,7 +61,7 @@ docker push java-application-pulselms or push from the docker hub(before pushing
 
 cat based questions (parameters) need to updated in the batabase  -Done(change the recalibration to 10 from 1 after testing)
 hr video completion after submit the exam complete --Done
-video recordings update path to the s3 bucket   
+video recordings update path to the s3 bucket   -Done
 
 bulk cat questions upload end point -Done
 bulk video questions upload endpoint -Done
@@ -52,13 +69,18 @@ bulk applications upload endpoint
 POST /cat-items - Create a new CAT question -Done   
 PUT /cat-items/{item_id} - Update an existing CAT question -Done
 DELETE /cat-items/{item_id} - Delete a CAT question -Done
-keep the time limit to auto complete the testing
-bulk video evaluations 
+keep the time limit to auto complete the testing -idea is to add the encryped time in the url and decode 
+                                                    it in the frontend and keep the validation for the button
+bulk video evaluations -Done
 authentication
 
 Frontend Major Changes
     ai recognization model need to update in the frontend for cat based exam
-    and speech to text and text to speech convertions need to update in the frontend for the hr video exam
+    and speech to text and text to speech convertions need to update in the frontend for the hr video exam  -Done 
+
+    keep the time limit to auto complete the testing -idea is to add the encryped time in the url and decode 
+                                                    it in the frontend and keep the validation for the button
+
     video hr Evaluation frontend page for the hr  --need changes like url of video and keep the evaluation in table format
 
 
