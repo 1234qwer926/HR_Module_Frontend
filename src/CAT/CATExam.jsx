@@ -65,7 +65,7 @@ const CATExam = () => {
   // CLEANUP ALL STREAMS & RESOURCES
   // ============================================================
   const cleanupAllResources = () => {
-    console.log('🧹 Cleaning up all resources...');
+    console.log('ðŸ§¹ Cleaning up all resources...');
 
     // Stop detection interval
     if (detectionIntervalRef.current) {
@@ -77,7 +77,7 @@ const CATExam = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       videoRef.current.srcObject.getTracks().forEach(track => {
         track.stop();
-        console.log('❌ Stopped camera track:', track.kind);
+        console.log('âŒ Stopped camera track:', track.kind);
       });
       videoRef.current.srcObject = null;
     }
@@ -86,7 +86,7 @@ const CATExam = () => {
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach(track => {
         track.stop();
-        console.log('❌ Stopped screen track:', track.kind);
+        console.log('âŒ Stopped screen track:', track.kind);
       });
       screenStreamRef.current = null;
     }
@@ -97,7 +97,7 @@ const CATExam = () => {
         document.exitFullscreen?.() ||
           document.webkitExitFullscreen?.() ||
           document.msExitFullscreen?.();
-        console.log('❌ Exited fullscreen');
+        console.log('âŒ Exited fullscreen');
       }
     } catch (err) {
       console.warn('Could not exit fullscreen:', err);
@@ -107,7 +107,7 @@ const CATExam = () => {
     setCameraActive(false);
     setScreenSharingActive(false);
 
-    console.log('✓ All resources cleaned up');
+    console.log('âœ“ All resources cleaned up');
   };
 
   // ============================================================
@@ -115,7 +115,7 @@ const CATExam = () => {
   // ============================================================
   useEffect(() => {
     const handleNavigationStart = () => {
-      console.log('📍 Navigation detected, cleaning up...');
+      console.log('ðŸ“ Navigation detected, cleaning up...');
       cleanupAllResources();
     };
 
@@ -132,7 +132,7 @@ const CATExam = () => {
   // ============================================================
   useEffect(() => {
     if (!location.pathname.includes('/exam')) {
-      console.log('⚠️ User navigated away from /exam route');
+      console.log('âš ï¸ User navigated away from /exam route');
       cleanupAllResources();
     }
   }, [location.pathname]);
@@ -160,7 +160,7 @@ const CATExam = () => {
         ]);
 
         const loadTime = Date.now() - startTime;
-        console.log(`✓ Face detection models loaded successfully in ${loadTime}ms`);
+        console.log(`âœ“ Face detection models loaded successfully in ${loadTime}ms`);
 
         setModelsLoaded(true);
         modelRetryCountRef.current = 0;
@@ -208,7 +208,7 @@ const CATExam = () => {
   // ============================================================
   useEffect(() => {
     return () => {
-      console.log('🧹 Component unmounting, cleaning up all resources');
+      console.log('ðŸ§¹ Component unmounting, cleaning up all resources');
       cleanupAllResources();
     };
   }, []);
@@ -233,33 +233,51 @@ const CATExam = () => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
 
-        // Add event listener for when video starts playing
-        videoRef.current.onplay = () => {
-          setDetectionDebug('Video playing, starting face detection...');
-          console.log('Video dimensions:', {
-            width: videoRef.current.videoWidth,
-            height: videoRef.current.videoHeight,
-            readyState: videoRef.current.readyState
-          });
-
-          if (modelsLoaded && !isFaceMonitoring) {
-            setTimeout(() => {
-              startFaceMonitoring();
-            }, 500);
+        // Wait for video to be fully loaded and ready
+        videoRef.current.onloadedmetadata = () => {
+          setDetectionDebug('Metadata loaded, attempting to play...');
+          if (videoRef.current) {
+            videoRef.current.play().catch(err => {
+              console.error('Error playing video:', err);
+              setDetectionDebug('Error playing video: ' + err.message);
+            });
           }
         };
 
-        videoRef.current.onloadedmetadata = () => {
-          setDetectionDebug('Metadata loaded, video ready');
-          videoRef.current.play().catch(err => {
-            console.error('Error playing video:', err);
-            setDetectionDebug('Error playing video: ' + err.message);
-          });
+        // Add event listener for when video data is loaded and playing
+        videoRef.current.oncanplay = () => {
+          setDetectionDebug('Video can play, checking dimensions...');
+          if (videoRef.current) {
+            console.log('Video dimensions:', {
+              width: videoRef.current.videoWidth,
+              height: videoRef.current.videoHeight,
+              readyState: videoRef.current.readyState
+            });
+          }
         };
 
-        // Fallback: play immediately
+        // Start face monitoring when video is actually playing with data
+        videoRef.current.onplaying = () => {
+          setDetectionDebug('Video playing with data...');
+          if (videoRef.current) {
+            console.log('Video playing - dimensions:', {
+              width: videoRef.current.videoWidth,
+              height: videoRef.current.videoHeight,
+              readyState: videoRef.current.readyState
+            });
+
+            // Start face monitoring after video is confirmed playing
+            if (modelsLoaded && !isFaceMonitoring && videoRef.current.videoWidth > 0) {
+              setTimeout(() => {
+                startFaceMonitoring();
+              }, 1000); // Give more time for video to stabilize
+            }
+          }
+        };
+
+        // Trigger initial play
         videoRef.current.play().catch(err => {
-          console.error('Immediate play error:', err);
+          console.error('Immediate play error (will retry on loadedmetadata):', err);
         });
       }
 
@@ -269,7 +287,7 @@ const CATExam = () => {
       return true;
     } catch (err) {
       console.error('Camera permission denied:', err);
-      setModelLoadingError('❌ Camera access is required for exam proctoring.');
+      setModelLoadingError('âŒ Camera access is required for exam proctoring.');
       setDetectionDebug('Camera error: ' + err.message);
       return false;
     }
@@ -299,7 +317,7 @@ const CATExam = () => {
         videoTrack.onended = () => {
           console.log('Screen sharing stopped');
           setScreenSharingActive(false);
-          showWarning('❌ Screen sharing was stopped. Exam session will be terminated.');
+          showWarning('âŒ Screen sharing was stopped. Exam session will be terminated.');
           setTimeout(() => {
             endExam();
           }, 1500);
@@ -310,7 +328,7 @@ const CATExam = () => {
     } catch (err) {
       console.error('Screen sharing denied:', err);
       if (err.name !== 'NotAllowedError') {
-        setModelLoadingError('❌ Screen sharing is required for exam. Please try again.');
+        setModelLoadingError('âŒ Screen sharing is required for exam. Please try again.');
       }
       return false;
     }
@@ -336,8 +354,21 @@ const CATExam = () => {
 
     const detectFace = async () => {
       try {
-        if (!videoRef.current || videoRef.current.readyState !== 4) {
-          setDetectionDebug(`Video not ready. ReadyState: ${videoRef.current?.readyState || 'null'}`);
+        // Enhanced null safety checks
+        if (!videoRef.current) {
+          setDetectionDebug('Video ref is null');
+          return;
+        }
+
+        // Check if video is fully ready (readyState 4 = HAVE_ENOUGH_DATA)
+        if (videoRef.current.readyState !== 4) {
+          setDetectionDebug(`Video not ready. ReadyState: ${videoRef.current.readyState}`);
+          return;
+        }
+
+        // Check if video has valid dimensions
+        if (!videoRef.current.videoWidth || !videoRef.current.videoHeight) {
+          setDetectionDebug(`Invalid video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
           return;
         }
 
@@ -362,7 +393,7 @@ const CATExam = () => {
         // Check for multiple faces
         if (detections.length > 1) {
           setMultipleFaces(true);
-          showWarning('⚠️ Multiple faces detected! Only one person should be visible.');
+          showWarning('âš ï¸ Multiple faces detected! Only one person should be visible.');
         } else if (detections.length === 1) {
           setMultipleFaces(false);
           consecutiveNoFaceFrames = 0;
@@ -375,7 +406,7 @@ const CATExam = () => {
             lightingFrames.push(detections[0].detection.score);
             if (lightingFrames.length > 10) {
               setLightingQuality('poor');
-              showWarning('💡 Lighting appears poor. Ensure adequate lighting on your face.');
+              showWarning('ðŸ’¡ Lighting appears poor. Ensure adequate lighting on your face.');
               lightingFrames = [];
             }
           }
@@ -387,7 +418,7 @@ const CATExam = () => {
             setFaceWarnings(prev => {
               const newWarnings = prev + 1;
               if (newWarnings >= 3) {
-                showWarning('❌ Maximum face detection violations reached. Exam will be ended.');
+                showWarning('âŒ Maximum face detection violations reached. Exam will be ended.');
                 setTimeout(() => {
                   endExam();
                 }, 1500);
@@ -395,9 +426,15 @@ const CATExam = () => {
               return newWarnings;
             });
 
-            showWarning(`📹 Face not detected in frame. Keep your face visible.`);
+            showWarning(`ðŸ“¹ Face not detected in frame. Keep your face visible.`);
             consecutiveNoFaceFrames = 0;
           }
+        }
+
+        // Double-check videoRef still exists before accessing dimensions
+        if (!videoRef.current) {
+          setDetectionDebug('Video ref became null during detection');
+          return;
         }
 
         // Draw face detection visualization
@@ -406,7 +443,7 @@ const CATExam = () => {
           height: videoRef.current.videoHeight
         };
 
-        if (canvasRef.current) {
+        if (canvasRef.current && displaySize.width > 0 && displaySize.height > 0) {
           canvasRef.current.width = displaySize.width;
           canvasRef.current.height = displaySize.height;
 
@@ -441,10 +478,10 @@ const CATExam = () => {
       if (document.hidden) {
         setWindowWarnings(prev => {
           const newWarnings = prev + 1;
-          showWarning(`🔔 Tab switch detected (${newWarnings}/3). Returning may result in disqualification.`);
+          showWarning(`ðŸ”” Tab switch detected (${newWarnings}/3). Returning may result in disqualification.`);
 
           if (newWarnings >= 3) {
-            showWarning('❌ Maximum tab switches reached. Exam will be ended.');
+            showWarning('âŒ Maximum tab switches reached. Exam will be ended.');
             setTimeout(() => {
               endExam();
             }, 1500);
@@ -457,7 +494,7 @@ const CATExam = () => {
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
         setIsFullScreen(false);
-        showWarning('⚠️ Fullscreen mode exited. Please return to fullscreen.');
+        showWarning('âš ï¸ Fullscreen mode exited. Please return to fullscreen.');
       } else {
         setIsFullScreen(true);
       }
@@ -500,14 +537,23 @@ const CATExam = () => {
     setLoading(true);
 
     try {
-      // Enter fullscreen
+      // Note: Fullscreen is triggered by user click, so it should work
+      // Enter fullscreen - this MUST be called directly from user interaction
       try {
-        await document.documentElement.requestFullscreen?.() ||
-          document.documentElement.webkitRequestFullscreen?.() ||
-          document.documentElement.msRequestFullscreen?.();
+        const docElem = document.documentElement;
+        if (docElem.requestFullscreen) {
+          await docElem.requestFullscreen();
+        } else if (docElem.webkitRequestFullscreen) {
+          await docElem.webkitRequestFullscreen();
+        } else if (docElem.msRequestFullscreen) {
+          await docElem.msRequestFullscreen();
+        }
         setIsFullScreen(true);
+        console.log('âœ“ Entered fullscreen mode');
       } catch (err) {
-        console.warn('Fullscreen not available:', err);
+        // Fullscreen might fail if not user-initiated or not supported
+        console.warn('Fullscreen request failed:', err);
+        // Don't block exam start if fullscreen fails
       }
 
       setShowPermissionDialog(false);
@@ -528,7 +574,7 @@ const CATExam = () => {
   // HANDLE BACK/CLOSE BUTTON - Stop all streams
   // ============================================================
   const handleExitSetup = () => {
-    console.log('🚪 User clicked exit/close button');
+    console.log('ðŸšª User clicked exit/close button');
     cleanupAllResources();
     navigate('/exam/login');
   };
@@ -634,7 +680,7 @@ const CATExam = () => {
     const feedback = document.getElementById('answer-feedback');
     if (feedback) {
       feedback.className = `answer-feedback ${correct ? 'correct' : 'incorrect'} show`;
-      feedback.textContent = correct ? '✓ Correct!' : '✗ Incorrect';
+      feedback.textContent = correct ? 'âœ“ Correct!' : 'âœ— Incorrect';
 
       setTimeout(() => {
         feedback.classList.remove('show');
@@ -646,7 +692,7 @@ const CATExam = () => {
   // END EXAM
   // ============================================================
   const endExam = () => {
-    console.log('🛑 Ending exam...');
+    console.log('ðŸ›‘ Ending exam...');
     cleanupAllResources();
     localStorage.removeItem('cat_session');
     navigate('/exam/login');
@@ -657,7 +703,7 @@ const CATExam = () => {
   // ============================================================
   const completeExam = async (sessionId) => {
     try {
-      console.log('✅ Completing exam...');
+      console.log('âœ… Completing exam...');
       if (detectionIntervalRef.current) {
         clearInterval(detectionIntervalRef.current);
       }
@@ -692,35 +738,35 @@ const CATExam = () => {
             onClick={handleExitSetup}
             title="Exit exam setup and close all streams"
           >
-            ✕
+            âœ•
           </button>
 
           {/* Stage: Instructions */}
           {setupStage === 'instructions' && (
             <>
               <div className="permission-header">
-                <h1>🎯 Exam Proctoring Setup</h1>
+                <h1>ðŸŽ¯ Exam Proctoring Setup</h1>
                 <p>Complete the following steps before starting your exam</p>
               </div>
 
               <div className="instructions-section">
-                <h2>📋 Exam Instructions</h2>
+                <h2>ðŸ“‹ Exam Instructions</h2>
                 <ul className="instructions-list">
-                  <li>✓ Ensure adequate lighting on your face</li>
-                  <li>✓ Use a quiet environment with minimal background noise</li>
-                  <li>✓ No switching between tabs or applications</li>
-                  <li>✓ Keep your entire face visible throughout the exam</li>
-                  <li>✓ Only one person should be visible on camera</li>
-                  <li>✓ Your entire screen will be recorded during the exam</li>
-                  <li>✓ You cannot go back to previous questions</li>
-                  <li>✓ Exam duration: 30 questions (adaptive difficulty)</li>
-                  <li>✓ Violations may result in exam disqualification</li>
+                  <li>âœ“ Ensure adequate lighting on your face</li>
+                  <li>âœ“ Use a quiet environment with minimal background noise</li>
+                  <li>âœ“ No switching between tabs or applications</li>
+                  <li>âœ“ Keep your entire face visible throughout the exam</li>
+                  <li>âœ“ Only one person should be visible on camera</li>
+                  <li>âœ“ Your entire screen will be recorded during the exam</li>
+                  <li>âœ“ You cannot go back to previous questions</li>
+                  <li>âœ“ Exam duration: 30 questions (adaptive difficulty)</li>
+                  <li>âœ“ Violations may result in exam disqualification</li>
                 </ul>
               </div>
 
               <div className="warning-section">
                 <p className="warning-text">
-                  ⚠️ By proceeding, you acknowledge that you understand the proctoring rules
+                  âš ï¸ By proceeding, you acknowledge that you understand the proctoring rules
                   and agree to comply with them throughout the exam.
                 </p>
               </div>
@@ -738,13 +784,13 @@ const CATExam = () => {
           {setupStage === 'camera' && (
             <>
               <div className="permission-header">
-                <h1>📹 Camera Setup</h1>
+                <h1>ðŸ“¹ Camera Setup</h1>
                 <p>Grant camera access for face detection</p>
               </div>
 
               {modelLoadingError && (
                 <div className="error-message">
-                  <p>❌ {modelLoadingError}</p>
+                  <p>âŒ {modelLoadingError}</p>
                 </div>
               )}
 
@@ -764,19 +810,19 @@ const CATExam = () => {
                   />
                   <div className="preview-status">
                     {!cameraActive && (
-                      <span className="status-badge inactive">○ Camera not connected</span>
+                      <span className="status-badge inactive">â—‹ Camera not connected</span>
                     )}
                     {cameraActive && !modelsLoaded && (
-                      <span className="status-badge loading">⏳ Loading face detection...</span>
+                      <span className="status-badge loading">â³ Loading face detection...</span>
                     )}
                     {cameraActive && modelsLoaded && !faceDetected && (
-                      <span className="status-badge inactive">○ Waiting for face...</span>
+                      <span className="status-badge inactive">â—‹ Waiting for face...</span>
                     )}
                     {cameraActive && modelsLoaded && faceDetected && !multipleFaces && (
-                      <span className="status-badge active">✓ Face Detected</span>
+                      <span className="status-badge active">âœ“ Face Detected</span>
                     )}
                     {multipleFaces && (
-                      <span className="status-badge warning">⚠️ Multiple faces detected</span>
+                      <span className="status-badge warning">âš ï¸ Multiple faces detected</span>
                     )}
                   </div>
                   <div className="debug-info">
@@ -788,10 +834,10 @@ const CATExam = () => {
                   <div className="permission-details">
                     <h3>Requirements</h3>
                     <ul className="requirement-list">
-                      <li>✓ Clear lighting on your face</li>
-                      <li>✓ Face centered and visible</li>
-                      <li>✓ Only one person visible</li>
-                      <li>✓ Quiet environment</li>
+                      <li>âœ“ Clear lighting on your face</li>
+                      <li>âœ“ Face centered and visible</li>
+                      <li>âœ“ Only one person visible</li>
+                      <li>âœ“ Quiet environment</li>
                     </ul>
                   </div>
                 </div>
@@ -802,7 +848,7 @@ const CATExam = () => {
                   className="start-exam-button secondary"
                   onClick={() => setSetupStage('instructions')}
                 >
-                  ← Back
+                  â† Back
                 </button>
                 <button
                   className="start-exam-button"
@@ -819,7 +865,7 @@ const CATExam = () => {
           {setupStage === 'screen' && (
             <>
               <div className="permission-header">
-                <h1>🖥️ Screen Sharing Setup</h1>
+                <h1>ðŸ–¥ï¸ Screen Sharing Setup</h1>
                 <p>Grant screen sharing permission to record your exam</p>
               </div>
 
@@ -828,17 +874,17 @@ const CATExam = () => {
                   <h3>Why Screen Sharing?</h3>
                   <p>Your entire screen/monitor will be recorded to:</p>
                   <ul className="requirement-list">
-                    <li>✓ Ensure exam integrity</li>
-                    <li>✓ Prevent unauthorized resources</li>
-                    <li>✓ Record all activity during exam</li>
-                    <li>✓ Protect against malpractice</li>
+                    <li>âœ“ Ensure exam integrity</li>
+                    <li>âœ“ Prevent unauthorized resources</li>
+                    <li>âœ“ Record all activity during exam</li>
+                    <li>âœ“ Protect against malpractice</li>
                   </ul>
                 </div>
               </div>
 
               <div className="warning-section">
                 <p className="warning-text">
-                  💡 When you click "Grant Screen Access", select "Entire Screen" or "Monitor"
+                  ðŸ’¡ When you click "Grant Screen Access", select "Entire Screen" or "Monitor"
                   in the system dialog that appears. Do NOT select just the browser window.
                 </p>
               </div>
@@ -848,7 +894,7 @@ const CATExam = () => {
                   className="start-exam-button secondary"
                   onClick={() => setSetupStage('camera')}
                 >
-                  ← Back
+                  â† Back
                 </button>
                 <button
                   className="start-exam-button"
@@ -864,28 +910,28 @@ const CATExam = () => {
           {setupStage === 'ready' && (
             <>
               <div className="permission-header">
-                <h1>✓ Ready to Start</h1>
+                <h1>âœ“ Ready to Start</h1>
                 <p>All permissions granted and verified</p>
               </div>
 
               <div className="setup-checklist">
                 <div className="checklist-item checked">
-                  <span className="check-icon">✓</span>
+                  <span className="check-icon">âœ“</span>
                   <span>Camera Access - Enabled</span>
                 </div>
                 <div className="checklist-item checked">
-                  <span className="check-icon">✓</span>
+                  <span className="check-icon">âœ“</span>
                   <span>Screen Sharing - Enabled</span>
                 </div>
                 <div className="checklist-item checked">
-                  <span className="check-icon">✓</span>
+                  <span className="check-icon">âœ“</span>
                   <span>Face Detection Models - Loaded</span>
                 </div>
               </div>
 
               <div className="final-warning">
                 <p>
-                  🎯 The exam will now start in <strong>fullscreen mode</strong> with continuous monitoring.
+                  ðŸŽ¯ The exam will now start in <strong>fullscreen mode</strong> with continuous monitoring.
                   You will have <strong>30 adaptive questions</strong> to answer.
                 </p>
               </div>
@@ -895,7 +941,7 @@ const CATExam = () => {
                   className="start-exam-button secondary"
                   onClick={() => setSetupStage('screen')}
                 >
-                  ← Back
+                  â† Back
                 </button>
                 <button
                   className="start-exam-button success"
@@ -908,7 +954,7 @@ const CATExam = () => {
                       Starting...
                     </>
                   ) : (
-                    '🚀 Start Exam Now'
+                    'ðŸš€ Start Exam Now'
                   )}
                 </button>
               </div>
@@ -958,24 +1004,24 @@ const CATExam = () => {
       {/* Monitoring Bar */}
       <div className="monitoring-bar">
         <div className={`monitor-indicator ${faceDetected ? 'active' : 'warning'}`}>
-          📹 {faceDetected ? 'Face Detected' : 'Face NOT Detected'}
+          ðŸ“¹ {faceDetected ? 'Face Detected' : 'Face NOT Detected'}
         </div>
         <div className={`monitor-indicator ${multipleFaces ? 'warning' : 'active'}`}>
-          👤 {multipleFaces ? 'Multiple Faces!' : 'Single Person'}
+          ðŸ‘¤ {multipleFaces ? 'Multiple Faces!' : 'Single Person'}
         </div>
         <div className={`monitor-indicator ${lightingQuality === 'good' ? 'active' : lightingQuality === 'poor' ? 'warning' : 'normal'}`}>
-          💡 Lighting: {lightingQuality === 'good' ? 'Good' : lightingQuality === 'poor' ? 'Poor' : 'Analyzing'}
+          ðŸ’¡ Lighting: {lightingQuality === 'good' ? 'Good' : lightingQuality === 'poor' ? 'Poor' : 'Analyzing'}
         </div>
         <div className="monitor-indicator">
-          ⚠️ Face Warnings: {faceWarnings} / 3
+          âš ï¸ Face Warnings: {faceWarnings} / 3
         </div>
         <div className="monitor-indicator">
-          🔄 Tab Switches: {windowWarnings} / 3
+          ðŸ”„ Tab Switches: {windowWarnings} / 3
         </div>
       </div>
 
       {/* Camera Monitoring Feed */}
-      <div className="camera-monitoring">
+      <div className="camera-monetization">  {/* Changed from camera-monitoring */}
         <video
           ref={videoRef}
           autoPlay
@@ -988,6 +1034,7 @@ const CATExam = () => {
           className="monitoring-canvas"
         />
       </div>
+
 
       {/* Exam Header */}
       <div className="exam-header">
@@ -1064,7 +1111,7 @@ const CATExam = () => {
         {/* Sidebar */}
         <div className="exam-sidebar">
           <div className="sidebar-card">
-            <h3>📋 Instructions</h3>
+            <h3>ðŸ“‹ Instructions</h3>
             <ul>
               <li>Read each question carefully</li>
               <li>Select one answer</li>
@@ -1074,7 +1121,7 @@ const CATExam = () => {
           </div>
 
           <div className="sidebar-card">
-            <h3>📊 Progress</h3>
+            <h3>ðŸ“Š Progress</h3>
             <div className="progress-info">
               <p>Adaptive test</p>
               <div className="progress-bar">
@@ -1090,7 +1137,7 @@ const CATExam = () => {
           </div>
 
           <div className="sidebar-card ability-card">
-            <h3>📈 Current Ability</h3>
+            <h3>ðŸ“ˆ Current Ability</h3>
             <div className="ability-meter">
               <div className="ability-value">{stats.currentTheta.toFixed(2)}</div>
               <div className="ability-scale">
@@ -1108,11 +1155,11 @@ const CATExam = () => {
           </div>
 
           <div className="sidebar-card violations-card">
-            <h3>⚠️ Monitoring Status</h3>
+            <h3>âš ï¸ Monitoring Status</h3>
             <div className="violations-list">
               <p>Face Violations: <strong>{faceWarnings}/3</strong></p>
               <p>Tab Switches: <strong>{windowWarnings}/3</strong></p>
-              <p>Lighting: <strong>{lightingQuality === 'good' ? '✓ Good' : lightingQuality === 'poor' ? '⚠️ Poor' : 'Analyzing'}</strong></p>
+              <p>Lighting: <strong>{lightingQuality === 'good' ? 'âœ“ Good' : lightingQuality === 'poor' ? 'âš ï¸ Poor' : 'Analyzing'}</strong></p>
             </div>
           </div>
         </div>
