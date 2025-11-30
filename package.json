@@ -20,6 +20,7 @@
     "@mantinex/dev-icons": "^2.0.0",
     "@mantinex/mantine-logo": "^2.0.0",
     "@tabler/icons-react": "^3.34.1",
+    "@tensorflow/tfjs": "^4.22.0",
     "axios": "^1.13.2",
     "dayjs": "^1.11.18",
     "face-api.js": "^0.20.0",
