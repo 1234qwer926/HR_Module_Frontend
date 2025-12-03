@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Burger, Container, Group, Button, Drawer, Stack, Divider, Menu } from '@mantine/core';
+import { Burger, Container, Group, Button, Drawer, Stack, Divider } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconUser, IconLogout, IconDashboard, IconBriefcase, IconFileText, IconVideo } from '@tabler/icons-react';
+import { IconDashboard, IconBriefcase, IconFileText, IconVideo } from '@tabler/icons-react';
 import classes from './HeaderSimple.module.css';
 
 export default function HeaderSimple() {
@@ -10,6 +10,19 @@ export default function HeaderSimple() {
   const location = useLocation();
   const [opened, { toggle, close }] = useDisclosure(false);
   const [active, setActive] = useState(location.pathname);
+
+  // Paths where header/navbar must be hidden
+  const hideHeaderPaths = [
+    '/exam/login',
+    '/exam',
+    '/exam/complete',
+    '/hr-video-exam',
+  ];
+
+  // If current path is in hideHeaderPaths, render nothing
+  if (hideHeaderPaths.includes(location.pathname)) {
+    return null;
+  }
 
   useEffect(() => {
     setActive(location.pathname);
@@ -21,27 +34,20 @@ export default function HeaderSimple() {
     close();
   };
 
-  // Public navigation links
+  // Public navigation links (no role/auth checking)
   const publicLinks = [
     { link: '/jobs', label: 'Browse Jobs' },
-  ];
-
-  // HR-specific links
-  const hrLinks = [
     { link: '/hr/dashboard', label: 'Dashboard', icon: IconDashboard },
-    { link: '/jobs', label: 'Jobs', icon: IconBriefcase },
+    // { link: '/jobs', label: 'Jobs', icon: IconBriefcase },
     { link: '/applications', label: 'Applications', icon: IconFileText },
-    { link: '/video/questions', label: 'Video Questions', icon: IconVideo },
+    { link: '/hr-video-exam/questions-management', label: 'Video Questions', icon: IconVideo },
+    { link: '/cat/management', label: 'CAT Management', icon: IconFileText }
+    
   ];
 
-  // Candidate-specific links
-  const candidateLinks = [
-    { link: '/candidate/dashboard', label: 'Dashboard', icon: IconDashboard },
-    { link: '/jobs', label: 'Browse Jobs', icon: IconBriefcase },
-    { link: '/applications', label: 'My Applications', icon: IconFileText },
-  ];
+ 
 
-  // Default to public links (no role/auth checking)
+  // Currently using only public links (no conditional role logic)
   const links = publicLinks;
 
   const items = links.map((link) => (
@@ -59,7 +65,6 @@ export default function HeaderSimple() {
     </a>
   ));
 
-  // Mobile menu items
   const mobileItems = links.map((link) => {
     const Icon = link.icon;
     return (
@@ -83,19 +88,19 @@ export default function HeaderSimple() {
     <>
       <header className={classes.header}>
         <Container size="lg" className={classes.inner}>
-          <div 
+          <div
             className={classes.logo}
             onClick={() => handleNavigation('/')}
             style={{ cursor: 'pointer' }}
           >
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <rect width="32" height="32" rx="8" fill="#228BE6"/>
-              <path d="M16 8L20 12H18V20H14V12H12L16 8Z" fill="white"/>
-              <rect x="10" y="22" width="12" height="2" rx="1" fill="white"/>
+              <rect width="32" height="32" rx="8" fill="#228BE6" />
+              <path d="M16 8L20 12H18V20H14V12H12L16 8Z" fill="white" />
+              <rect x="10" y="22" width="12" height="2" rx="1" fill="white" />
             </svg>
             <span className={classes.logoText}>PulseAI</span>
           </div>
-          
+
           {/* Desktop Navigation */}
           <Group gap={5} visibleFrom="sm">
             {items}
@@ -103,19 +108,14 @@ export default function HeaderSimple() {
 
           {/* Desktop Auth Buttons */}
           <Group gap="sm" visibleFrom="sm">
-            <Button 
-              variant="default" 
-              size="sm" 
+            <Button
+              variant="default"
+              size="sm"
               onClick={() => handleNavigation('/login')}
             >
-              Login
+              HR Login
             </Button>
-            <Button 
-              size="sm" 
-              onClick={() => handleNavigation('/login')}
-            >
-              Sign Up
-            </Button>
+            
           </Group>
 
           {/* Mobile Burger */}
@@ -132,9 +132,9 @@ export default function HeaderSimple() {
         title={
           <div className={classes.drawerLogo}>
             <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-              <rect width="32" height="32" rx="8" fill="#228BE6"/>
-              <path d="M16 8L20 12H18V20H14V12H12L16 8Z" fill="white"/>
-              <rect x="10" y="22" width="12" height="2" rx="1" fill="white"/>
+              <rect width="32" height="32" rx="8" fill="#228BE6" />
+              <path d="M16 8L20 12H18V20H14V12H12L16 8Z" fill="white" />
+              <rect x="10" y="22" width="12" height="2" rx="1" fill="white" />
             </svg>
             <span className={classes.drawerLogoText}>PulseAI</span>
           </div>
@@ -144,24 +144,18 @@ export default function HeaderSimple() {
       >
         <Stack gap="md" mt="lg">
           {mobileItems}
-          
+
           <Divider my="md" />
+
+          <Button
+            variant="default"
+            size="md"
+            fullWidth
+            onClick={() => handleNavigation('/login')}
+          >
+            HR Login
+          </Button>
           
-          <Button 
-            variant="default" 
-            size="md" 
-            fullWidth 
-            onClick={() => handleNavigation('/login')}
-          >
-            Login
-          </Button>
-          <Button 
-            size="md" 
-            fullWidth 
-            onClick={() => handleNavigation('/login')}
-          >
-            Sign Up
-          </Button>
         </Stack>
       </Drawer>
     </>

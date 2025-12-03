@@ -4,7 +4,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 // Components
 import HeaderSimple from './components/HeaderSimple/HeaderSimple';
 import { FooterLinks } from './components/FooterLinks/FooterLinks';
-import GeminiChatModal from './components/GeminiChatModal';
 import Home from './components/Home/Home';
 
 
@@ -109,7 +108,6 @@ function App() {
         <Route path="/hr-video-exam/evaluation" element={<HRVideoExamEvaluation />} />
       </Routes>
       <FooterLinks />
-      <GeminiChatModal />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import {
   IconBrandGithub,
 } from "@tabler/icons-react";
 import { ActionIcon, Container, Group, Text } from "@mantine/core";
+import { useLocation, useNavigate } from "react-router-dom";
 import classes from "./FooterLinks.module.css";
 
 const data = [
@@ -37,6 +38,22 @@ const data = [
 ];
 
 export function FooterLinks() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Paths where footer must be hidden (same as header)
+  const hideFooterPaths = [
+    "/exam/login",
+    "/exam",
+    "/exam/complete",
+    "/hr-video-exam",
+  ];
+
+  // If current path is in hideFooterPaths, render nothing
+  if (hideFooterPaths.includes(location.pathname)) {
+    return null;
+  }
+
   const groups = data.map((group) => {
     const links = group.links.map((link, index) => (
       <Text
@@ -44,7 +61,10 @@ export function FooterLinks() {
         className={classes.link}
         component="a"
         href={link.link}
-        onClick={(event) => event.preventDefault()}
+        onClick={(event) => {
+          event.preventDefault();
+          navigate(link.link);
+        }}
       >
         {link.label}
       </Text>
@@ -64,15 +84,18 @@ export function FooterLinks() {
         <div className={classes.logo}>
           <div className={classes.logoContainer}>
             <svg width="40" height="40" viewBox="0 0 32 32" fill="none">
-              <rect width="32" height="32" rx="8" fill="#228BE6"/>
-              <path d="M16 8L20 12H18V20H14V12H12L16 8Z" fill="white"/>
-              <rect x="10" y="22" width="12" height="2" rx="1" fill="white"/>
+              <rect width="32" height="32" rx="8" fill="#228BE6" />
+              <path d="M16 8L20 12H18V20H14V12H12L16 8Z" fill="white" />
+              <rect x="10" y="22" width="12" height="2" rx="1" fill="white" />
             </svg>
-            <Text size="xl" fw={700} className={classes.logoText}>PulseAI</Text>
+            <Text size="xl" fw={700} className={classes.logoText}>
+              PulseAI
+            </Text>
           </div>
           <Text size="sm" c="dimmed" className={classes.description}>
-            AI-powered recruitment platform streamlining hiring with adaptive testing, 
-            resume screening, and video interviews. Hire smarter, hire faster.
+            AI-powered recruitment platform streamlining hiring with adaptive
+            testing, resume screening, and video interviews. Hire smarter, hire
+            faster.
           </Text>
         </div>
         <div className={classes.groups}>{groups}</div>
@@ -82,7 +105,12 @@ export function FooterLinks() {
           © 2025 PulseAI. All rights reserved.
         </Text>
 
-        <Group gap={8} className={classes.social} justify="flex-end" wrap="nowrap">
+        <Group
+          gap={8}
+          className={classes.social}
+          justify="flex-end"
+          wrap="nowrap"
+        >
           <ActionIcon size="lg" color="gray" variant="subtle" radius="md">
             <IconBrandLinkedin size={20} stroke={1.5} />
           </ActionIcon>
