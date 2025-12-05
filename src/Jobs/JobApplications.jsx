@@ -3,13 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container, Paper, Title, Text, Badge, Button, Stack, Group,
   Divider, Loader, Alert, Table, ScrollArea, Modal, Select, Textarea,
-  MultiSelect, Checkbox, ActionIcon, Tooltip, NumberInput
+  MultiSelect, Checkbox, ActionIcon, Tooltip, NumberInput, FileInput,
+  Progress, Tabs
 } from '@mantine/core';
 import {
   IconAlertCircle, IconArrowLeft, IconUser, IconMail, IconRefresh,
-  IconEye, IconMailForward, IconSortAscending, IconSortDescending
+  IconEye, IconMailForward, IconSortAscending, IconSortDescending,
+  IconUpload, IconFileSpreadsheet, IconCheck, IconX
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+
 
 // Helper: Title case
 const toTitleCase = (str) => {
@@ -19,6 +22,7 @@ const toTitleCase = (str) => {
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (l) => l.toUpperCase());
 };
+
 
 // Map backend stage → UI display
 const displayStage = (stage) => {
@@ -36,6 +40,7 @@ const displayStage = (stage) => {
   return map[stage] || toTitleCase(stage || '');
 };
 
+
 // Normalize UI → API (for simple endpoint)
 const normalizeStatusForAPI = (s) => {
   if (!s) return '';
@@ -46,6 +51,7 @@ const normalizeStatusForAPI = (s) => {
   };
   return map[s] || s;
 };
+
 
 export default function JobApplications() {
   const { id } = useParams();
@@ -67,12 +73,21 @@ export default function JobApplications() {
   const [selectedApps, setSelectedApps] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
 
-  // Modal state
+  // Modal state - Status Update
   const [modalOpened, setModalOpened] = useState(false);
   const [bulkStage, setBulkStage] = useState('');
   const [bulkMessage, setBulkMessage] = useState('');
   const [bulkSendEmail, setBulkSendEmail] = useState(true);
   const [bulkUpdating, setBulkUpdating] = useState(false);
+
+  // Modal state - Bulk Upload
+  const [uploadModalOpened, setUploadModalOpened] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadResults, setUploadResults] = useState(null);
+  const [uploadTab, setUploadTab] = useState('upload');
+
 
   // Fetch job
   const fetchJob = async () => {
@@ -86,6 +101,7 @@ export default function JobApplications() {
       setJobLoading(false);
     }
   };
+
 
   // Fetch applications
   const fetchApplications = async () => {
@@ -105,10 +121,12 @@ export default function JobApplications() {
     }
   };
 
+
   useEffect(() => {
     fetchJob();
     fetchApplications();
   }, [id]);
+
 
   // Processed apps: filter + sort + top N
   const processedApps = useMemo(() => {
@@ -136,14 +154,44 @@ export default function JobApplications() {
     return topN > 0 ? filtered.slice(0, topN) : filtered;
   }, [applications, statusFilter, sortBy, sortOrder, topN]);
 
+
+  // ============================================================
+  // HANDLE SELECT/DESELECT - FIXED
+  // ============================================================
+  const handleSelectChange = (appId, checked) => {
+    setSelectedApps(prev => {
+      if (checked) {
+        return [...prev, appId];
+      } else {
+        return prev.filter(id => id !== appId);
+      }
+    });
+  };
+
+
+  const handleSelectAll = (checked) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedApps(processedApps.map(a => a.id));
+    } else {
+      setSelectedApps([]);
+    }
+  };
+
+
   // Auto-select top N
   useEffect(() => {
     if (topN > 0 && processedApps.length > 0) {
-      setSelectedApps(processedApps.slice(0, topN).map(a => a.id));
+      const topIds = processedApps.slice(0, topN).map(a => a.id);
+      setSelectedApps(topIds);
+      setSelectAll(topIds.length === processedApps.length);
     }
   }, [processedApps, topN]);
 
-  // Bulk update handler
+
+  // ============================================================
+  // BULK UPDATE HANDLER (Status Update)
+  // ============================================================
   const handleBulkUpdate = async () => {
     if (selectedApps.length === 0 || !bulkStage) {
       notifications.show({
@@ -156,7 +204,6 @@ export default function JobApplications() {
 
     setBulkUpdating(true);
     try {
-      // Query params: new_status, send_email, custom_message
       const queryParams = new URLSearchParams();
       queryParams.append('new_status', normalizeStatusForAPI(bulkStage));
       queryParams.append('send_email', bulkSendEmail);
@@ -166,11 +213,10 @@ export default function JobApplications() {
 
       const url = `http://localhost:8000/applications/bulk-status-simple?${queryParams.toString()}`;
 
-      // Body: array of app_ids
       const res = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(selectedApps), // ← CRITICAL: app_ids in body
+        body: JSON.stringify(selectedApps),
       });
 
       if (!res.ok) {
@@ -184,7 +230,6 @@ export default function JobApplications() {
         color: 'green',
       });
 
-      // Reset modal
       setModalOpened(false);
       setBulkStage('');
       setBulkMessage('');
@@ -204,6 +249,77 @@ export default function JobApplications() {
     }
   };
 
+
+  // ============================================================
+  // BULK UPLOAD HANDLER - FIXED WITH JOB_ID IN FORMDATA
+  // ============================================================
+  const handleBulkUpload = async () => {
+    if (!uploadFile) {
+      notifications.show({
+        title: 'Error',
+        message: 'Please select an Excel file',
+        color: 'red',
+      });
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+    setUploadResults(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('job_id', id);  // ✅ Send job_id in FormData body
+      
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 15, 90));
+      }, 500);
+
+      // ✅ No query parameters - job_id in body
+      const url = `http://localhost:8000/applications/bulk-upload`;
+
+      const res = await fetch(url, {
+        method: 'POST',
+        body: formData,  // FormData contains: file + job_id
+      });
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Upload failed');
+      }
+
+      const result = await res.json();
+      setUploadResults(result);
+      setUploadTab('results');
+
+      notifications.show({
+        title: 'Upload Complete!',
+        message: `✓ ${result.successful} successful | ✗ ${result.failed} failed`,
+        color: result.failed === 0 ? 'green' : 'orange',
+      });
+
+      // Refresh applications after short delay
+      setTimeout(() => {
+        fetchApplications();
+      }, 1000);
+    } catch (e) {
+      notifications.show({
+        title: 'Upload Failed',
+        message: e.message,
+        color: 'red',
+      });
+    } finally {
+      setUploading(false);
+      setUploadFile(null);
+    }
+  };
+
+
   // Toggle sort
   const toggleSort = (field) => {
     if (sortBy === field) {
@@ -214,7 +330,8 @@ export default function JobApplications() {
     }
   };
 
-  // Stage options for UI
+
+  // Stage options
   const stageOptions = [
     { value: 'applied', label: 'Applied' },
     { value: 'screening', label: 'Screening' },
@@ -228,10 +345,15 @@ export default function JobApplications() {
 
   const sortOptions = [
     { value: 'resume_score', label: 'Resume Score' },
+    { value: 'skills_match_score', label: 'Skills Match' },
+    { value: 'experience_match_score', label: 'Experience Match' },
+    { value: 'education_match_score', label: 'Education Match' },
+    { value: 'certification_match_score', label: 'Certification Match' },
     { value: 'cat_theta', label: 'CAT Theta' },
     { value: 'cat_percentile', label: 'CAT Percentile' },
     { value: 'applied_at', label: 'Applied Date' },
   ];
+
 
   return (
     <Container size="xl" py="xl">
@@ -245,9 +367,26 @@ export default function JobApplications() {
         <Button variant="subtle" leftSection={<IconArrowLeft />} onClick={() => navigate(-1)}>
           Back to Jobs
         </Button>
-        <Button variant="light" leftSection={<IconRefresh />} onClick={fetchApplications}>
-          Refresh
-        </Button>
+        <Group gap="sm">
+          <Button 
+            variant="light" 
+            leftSection={<IconRefresh />} 
+            onClick={fetchApplications}
+          >
+            Refresh
+          </Button>
+          <Button 
+            color="green"
+            leftSection={<IconUpload />} 
+            onClick={() => {
+              setUploadModalOpened(true);
+              setUploadTab('upload');
+              setUploadResults(null);
+            }}
+          >
+            Bulk Upload
+          </Button>
+        </Group>
       </Group>
 
       <Paper shadow="sm" p="lg" radius="md" withBorder>
@@ -295,6 +434,8 @@ export default function JobApplications() {
                 setSortBy('resume_score');
                 setSortOrder('desc');
                 setTopN(10);
+                setSelectedApps([]);
+                setSelectAll(false);
               }}
             >
               Reset Filters
@@ -316,15 +457,11 @@ export default function JobApplications() {
               <Table striped highlightOnHover withTableBorder withColumnBorders>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>
+                    <Table.Th style={{ width: '40px' }}>
                       <Checkbox
                         checked={selectAll}
                         indeterminate={selectedApps.length > 0 && selectedApps.length < processedApps.length}
-                        onChange={(e) => {
-                          const checked = e.currentTarget.checked;
-                          setSelectAll(checked);
-                          setSelectedApps(checked ? processedApps.map(a => a.id) : []);
-                        }}
+                        onChange={(e) => handleSelectAll(e.currentTarget.checked)}
                       />
                     </Table.Th>
                     <Table.Th onClick={() => toggleSort('full_name')} style={{ cursor: 'pointer' }}>
@@ -342,22 +479,16 @@ export default function JobApplications() {
                       {sortBy === 'cat_theta' && (sortOrder === 'desc' ? <IconSortDescending size={14} /> : <IconSortAscending size={14} />)}
                     </Table.Th>
                     <Table.Th>Applied</Table.Th>
-                    <Table.Th>Actions</Table.Th>
+                    <Table.Th style={{ width: '80px' }}>Actions</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {processedApps.map((app) => (
+                  {processedApps && processedApps.length > 0 && processedApps.map((app) => (
                     <Table.Tr key={app.id}>
                       <Table.Td>
                         <Checkbox
                           checked={selectedApps.includes(app.id)}
-                          onChange={(e) => {
-                            setSelectedApps(prev =>
-                              e.currentTarget.checked
-                                ? [...prev, app.id]
-                                : prev.filter(id => id !== app.id)
-                            );
-                          }}
+                          onChange={(e) => handleSelectChange(app.id, e.currentTarget.checked)}
                         />
                       </Table.Td>
                       <Table.Td>
@@ -411,7 +542,7 @@ export default function JobApplications() {
         </Stack>
       </Paper>
 
-      {/* Bulk Update Modal */}
+      {/* MODAL: Bulk Update Status */}
       <Modal
         opened={modalOpened}
         onClose={() => {
@@ -466,6 +597,199 @@ export default function JobApplications() {
             </Button>
           </Group>
         </Stack>
+      </Modal>
+
+      {/* MODAL: Bulk Upload Applications */}
+      <Modal
+        opened={uploadModalOpened}
+        onClose={() => {
+          setUploadModalOpened(false);
+          setUploadFile(null);
+          setUploadResults(null);
+          setUploadProgress(0);
+        }}
+        title="Bulk Upload Applications"
+        size="lg"
+      >
+        <Tabs value={uploadTab} onTabChange={setUploadTab}>
+          <Tabs.List>
+            <Tabs.Tab value="upload" leftSection={<IconUpload size={14} />}>
+              Upload
+            </Tabs.Tab>
+            <Tabs.Tab 
+              value="results" 
+              leftSection={<IconCheck size={14} />}
+              disabled={!uploadResults}
+            >
+              Results
+            </Tabs.Tab>
+          </Tabs.List>
+
+          <Tabs.Panel value="upload" py="md">
+            <Stack gap="md">
+              <div>
+                <Text fw={600} mb="sm">Upload Excel File</Text>
+                <Alert 
+                  icon={<IconFileSpreadsheet />} 
+                  color="blue" 
+                  title="Required Columns:"
+                  mb="md"
+                >
+                  <ul style={{ marginTop: 8, marginBottom: 0 }}>
+                    <li><strong>full_name</strong> - Candidate name</li>
+                    <li><strong>email</strong> - Email address</li>
+                    <li><strong>phone_number</strong> - Phone number</li>
+                    <li><strong>resume_url</strong> - Google Drive or direct PDF URL</li>
+                    <li><em>linkedin_profile</em> - (optional) LinkedIn URL</li>
+                    <li><em>portfolio_github</em> - (optional) GitHub/Portfolio URL</li>
+                    <li><em>specialization</em> - (optional) Specialization</li>
+                  </ul>
+                </Alert>
+              </div>
+
+              <FileInput
+                label="Select Excel File"
+                placeholder="Choose .xlsx or .xls file"
+                accept=".xlsx,.xls"
+                value={uploadFile}
+                onChange={setUploadFile}
+                icon={<IconFileSpreadsheet />}
+              />
+
+              {uploading && (
+                <div>
+                  <Group justify="space-between" mb={8}>
+                    <Text size="sm">Uploading...</Text>
+                    <Text size="sm" fw={600}>{uploadProgress}%</Text>
+                  </Group>
+                  <Progress value={uploadProgress} animated />
+                </div>
+              )}
+
+              <Group justify="flex-end" mt="md">
+                <Button 
+                  variant="light" 
+                  onClick={() => setUploadModalOpened(false)}
+                  disabled={uploading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  color="green"
+                  loading={uploading}
+                  onClick={handleBulkUpload}
+                  disabled={!uploadFile}
+                  leftSection={<IconUpload size={16} />}
+                >
+                  Upload & Score
+                </Button>
+              </Group>
+            </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="results" py="md">
+            {uploadResults && (
+              <Stack gap="md">
+                <Alert 
+                  color={uploadResults.failed === 0 ? 'green' : 'orange'}
+                  icon={uploadResults.failed === 0 ? <IconCheck /> : <IconAlertCircle />}
+                  title={uploadResults.failed === 0 ? 'All Successful!' : 'Completed with Errors'}
+                >
+                  Total: {uploadResults.total} | ✓ Success: {uploadResults.successful} | ✗ Failed: {uploadResults.failed}
+                </Alert>
+
+                {uploadResults.successful > 0 && (
+                  <div>
+                    <Text fw={600} mb="sm" c="green">
+                      ✓ {uploadResults.successful} Successful Uploads
+                    </Text>
+                    <ScrollArea>
+                      <Table striped size="sm" withTableBorder>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>Name</Table.Th>
+                            <Table.Th>Email</Table.Th>
+                            <Table.Th>Resume Score</Table.Th>
+                            <Table.Th>Skills</Table.Th>
+                            <Table.Th>Experience</Table.Th>
+                            <Table.Th>Education</Table.Th>
+                            <Table.Th>Certifications</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {uploadResults.successful_uploads.map((app, idx) => (
+                            <Table.Tr key={idx}>
+                              <Table.Td>
+                                <Text size="sm" fw={500}>{app.name}</Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm">{app.email}</Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text 
+                                  size="sm" 
+                                  fw={600}
+                                  c={app.resume_score >= 70 ? 'green' : app.resume_score >= 50 ? 'orange' : 'red'}
+                                >
+                                  {app.resume_score.toFixed(0)}
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm">{app.skills_match_score.toFixed(0)}%</Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm">{app.experience_match_score.toFixed(0)}%</Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm">{app.education_match_score.toFixed(0)}%</Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm">{app.certification_match_score.toFixed(0)}%</Text>
+                              </Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    </ScrollArea>
+                  </div>
+                )}
+
+                {uploadResults.failed > 0 && (
+                  <div>
+                    <Text fw={600} mb="sm" c="red">
+                      ✗ {uploadResults.failed} Failed Uploads
+                    </Text>
+                    <Stack gap="xs">
+                      {uploadResults.failed_uploads.map((fail, idx) => (
+                        <Alert 
+                          key={idx}
+                          icon={<IconX size={16} />} 
+                          color="red" 
+                          title={fail.name}
+                        >
+                          <Text size="sm">{fail.email} - {fail.error}</Text>
+                        </Alert>
+                      ))}
+                    </Stack>
+                  </div>
+                )}
+
+                <Group justify="flex-end" mt="md">
+                  <Button
+                    variant="light"
+                    onClick={() => {
+                      setUploadModalOpened(false);
+                      setUploadResults(null);
+                      setUploadFile(null);
+                    }}
+                  >
+                    Close
+                  </Button>
+                </Group>
+              </Stack>
+            )}
+          </Tabs.Panel>
+        </Tabs>
       </Modal>
     </Container>
   );
