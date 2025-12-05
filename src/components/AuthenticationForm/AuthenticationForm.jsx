@@ -1,210 +1,555 @@
-// src/pages/auth/AuthenticationForm.jsx
-import { useState } from 'react';
-import {
-  Anchor, Button, Checkbox, Divider, Group, Paper, PasswordInput, Stack, Text, TextInput, Alert
-} from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { useToggle, upperFirst } from '@mantine/hooks';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IconAlertCircle, IconCheck } from '@tabler/icons-react';
-import axios from 'axios';
 import { useAuth } from '../../AuthContext';
 
-export function AuthenticationForm(props) {
-  const [type, toggle] = useToggle(['login', 'register']);
+export function AuthenticationForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [currentForm, setCurrentForm] = useState('login'); // 'login', 'forgot', 'reset'
+  const [resetToken, setResetToken] = useState(null);
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const form = useForm({
-    initialValues: { username: '', email: '', password: '', terms: true },
-    validate: {
-      username: (val) => (val.length > 0 ? null : 'Username is required'),
-      email: (val) =>
-        type === 'register'
-          ? /^\S+@\S+$/.test(val) ? null : 'Invalid email'
-          : null,
-      password: (val) => (val.length >= 6 ? null : 'Password must be at least 6 characters'),
-    },
+  // Check for reset token in URL
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      setCurrentForm('reset');
+      setResetToken(token);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  // Login Form State
+  const [loginForm, setLoginForm] = useState({
+    username: '',
+    password: ''
   });
 
-  const navigateByRole = (role, userData) => {
-    // Store a flat role for compatibility with other parts of the app
-    if (role) localStorage.setItem('role', role);
-    // Maintain your existing navigation logic
-    if (role === 'ADMIN' || role === 'HR') {
-      navigate('/lmsdashboard');
-    } else if ((role === 'EMPLOYEE' || role === 'USER') && !userData?.dateOfJoining) {
-      navigate('/update-profile');
-    } else {
-      navigate('/subject');
-    }
-  };
+  // Forgot Password Form State
+  const [forgotForm, setForgotForm] = useState({
+    email: ''
+  });
 
-  const handleSubmit = async (values) => {
-    setLoading(true);
+  // Reset Password Form State
+  const [resetForm, setResetForm] = useState({
+    password: '',
+    confirmPassword: ''
+  });
+
+  const API_BASE = 'http://localhost:8000';
+
+  // Handle Login
+  const handleLogin = async (e) => {
+    e.preventDefault();
     setError(null);
-    setSuccess(null);
 
-    const endpoint = `http://localhost:8081/api/auth/${type}`;
-    const payload =
-      type === 'register'
-        ? { username: values.username, email: values.email, password: values.password }
-        : { username: values.username, password: values.password };
+    if (!loginForm.username.trim()) {
+      setError('Username is required');
+      return;
+    }
+    if (loginForm.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
 
+    setLoading(true);
     try {
-      if (type === 'register') {
-        // REGISTER
-        await axios.post(endpoint, payload, { withCredentials: true });
-        setSuccess('Registration successful! Please log in.');
-        toggle();
-        form.reset();
-      } else {
-        // LOGIN
-        await axios.post(endpoint, payload, { withCredentials: true });
-        const userDetailsEndpoint = `http://localhost:8081/api/auth/${values.username}`;
-        const userDetailsResponse = await axios.get(userDetailsEndpoint, { withCredentials: true });
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        credentials: 'include',
+        body: new URLSearchParams({
+          username: loginForm.username,
+          password: loginForm.password
+        })
+      });
 
-        const userData = userDetailsResponse.data;
-        login(userData);
-        if (userData?.role) localStorage.setItem('role', userData.role);
-        navigateByRole(userData?.role, userData);
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || 'Login failed');
       }
+
+      const data = await response.json();
+      login(data);
+      localStorage.setItem('role', data.role);
+      localStorage.setItem('user', data.username);
+      localStorage.setItem('access_token', data.access_token);
+
+      setSuccess('Login successful! Redirecting...');
+      setTimeout(() => {
+        navigate('/lmsdashboard');
+      }, 1000);
     } catch (err) {
-      console.error(`${type} failed:`, err);
-      setError(err.response?.data?.message || 'An unexpected error occurred.');
+      setError(err.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
 
-  // Demo login (no backend): instantly logs in as a role with sample data
-  const handleDemoLogin = (role) => {
+  // Handle Forgot Password
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
     setError(null);
-    setSuccess(null);
 
+    if (!forgotForm.email.trim()) {
+      setError('Email is required');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: forgotForm.email })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send reset link');
+      }
+
+      setSuccess('If an account exists with this email, a password reset link has been sent. Please check your email.');
+      setTimeout(() => {
+        setCurrentForm('login');
+        setForgotForm({ email: '' });
+      }, 3000);
+    } catch (err) {
+      setError(err.message || 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Reset Password
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setError(null);
+
+    if (resetForm.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    if (resetForm.password !== resetForm.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          token: resetToken,
+          new_password: resetForm.password
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || 'Failed to reset password');
+      }
+
+      setSuccess('Password reset successful! Redirecting to login...');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+    } catch (err) {
+      setError(err.message || 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Demo Login
+  const handleDemoLogin = (role) => {
     const demoUser = {
       username: `${role.toLowerCase()}_demo`,
       email: `${role.toLowerCase()}@example.com`,
       role,
-      dateOfJoining: role === 'EMPLOYEE' ? null : '2024-01-01',
-      demo: true,
-      displayName: role === 'HR' ? 'HR Manager (Demo)' : role === 'ADMIN' ? 'Admin (Demo)' : 'Employee (Demo)',
+      demo: true
     };
 
     login(demoUser);
-    if (demoUser.role) localStorage.setItem('role', demoUser.role);
-    navigateByRole(demoUser.role, demoUser);
+    localStorage.setItem('role', role);
+    localStorage.setItem('user', demoUser.username);
+    navigate('/lmsdashboard');
   };
 
   return (
-    <Paper radius="md" p="lg" withBorder {...props} style={{ maxWidth: '400px', margin: 'auto', marginTop: '50px' }}>
-      <Text size="lg" fw={500}>
-        Welcome, {type} to continue
-      </Text>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        {/* LOGIN FORM */}
+        {currentForm === 'login' && (
+          <div>
+            <h2 style={styles.title}>Welcome, login to continue</h2>
 
-      {/* Quick demo logins */}
-      <Stack mt="md" mb="sm" gap="xs">
-        <Text size="sm" c="dimmed">Quick demo login (no backend)</Text>
-        <Group grow>
-          <Button variant="light" onClick={() => handleDemoLogin('HR')} disabled={loading}>
-            Login as HR (Demo)
-          </Button>
-        </Group>
-        <Group grow>
-          <Button variant="default" onClick={() => handleDemoLogin('ADMIN')} disabled={loading}>
-            Admin (Demo)
-          </Button>
-          <Button variant="default" onClick={() => handleDemoLogin('EMPLOYEE')} disabled={loading}>
-            Employee (Demo)
-          </Button>
-        </Group>
-      </Stack>
+            {error && (
+              <div style={styles.alertError}>
+                <span style={{ marginRight: '8px' }}>!</span>
+                <div>
+                  <div>{error}</div>
+                  <button
+                    style={styles.closeBtn}
+                    onClick={() => setError(null)}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
 
-      <Divider label="Or continue with" labelPosition="center" my="lg" />
+            {success && (
+              <div style={styles.alertSuccess}>
+                <span style={{ marginRight: '8px' }}>✓</span>
+                <div>{success}</div>
+              </div>
+            )}
 
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack>
-          {success && (
-            <Alert
-              icon={<IconCheck size="1rem" />}
-              title="Success"
-              color="green"
-              withCloseButton
-              onClose={() => setSuccess(null)}
+            {/* Demo Login Buttons */}
+            <button
+              style={styles.buttonPrimary}
+              onClick={() => handleDemoLogin('ADMIN')}
+              disabled={loading}
             >
-              {success}
-            </Alert>
-          )}
-          {error && (
-            <Alert
-              icon={<IconAlertCircle size="1rem" />}
-              title="Error"
-              color="red"
-              withCloseButton
-              onClose={() => setError(null)}
+              {loading ? '...' : 'Login as Admin (Demo)'}
+            </button>
+
+            <div style={styles.divider}>Or continue with</div>
+
+            {/* Login Form */}
+            <form onSubmit={handleLogin}>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Username</label>
+                <input
+                  type="text"
+                  style={styles.input}
+                  placeholder="Your username"
+                  value={loginForm.username}
+                  onChange={(e) =>
+                    setLoginForm({ ...loginForm, username: e.target.value })
+                  }
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Password</label>
+                <input
+                  type="password"
+                  style={styles.input}
+                  placeholder="Your password"
+                  value={loginForm.password}
+                  onChange={(e) =>
+                    setLoginForm({ ...loginForm, password: e.target.value })
+                  }
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  ...styles.buttonPrimary,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.6 : 1
+                }}
+                disabled={loading}
+              >
+                {loading ? 'Logging in...' : 'Login'}
+              </button>
+            </form>
+
+            <div style={styles.footer}>
+              <button
+                style={styles.link}
+                onClick={() => {
+                  setCurrentForm('forgot');
+                  setError(null);
+                }}
+              >
+                Forgot Password?
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* FORGOT PASSWORD FORM */}
+        {currentForm === 'forgot' && (
+          <div>
+            <button
+              style={styles.backLink}
+              onClick={() => {
+                setCurrentForm('login');
+                setForgotForm({ email: '' });
+                setError(null);
+              }}
             >
-              {error}
-            </Alert>
-          )}
+              ← Back to Login
+            </button>
 
-          <TextInput
-            required
-            label="Username"
-            placeholder="Your username"
-            {...form.getInputProps('username')}
-            radius="md"
-          />
-          {type === 'register' && (
-            <TextInput
-              required
-              label="Email"
-              placeholder="hello@example.com"
-              {...form.getInputProps('email')}
-              radius="md"
-            />
-          )}
-          <PasswordInput
-            required
-            label="Password"
-            placeholder="Your password"
-            {...form.getInputProps('password')}
-            radius="md"
-          />
-          {type === 'register' && (
-            <Checkbox
-              required
-              label="I accept the terms and conditions"
-              {...form.getInputProps('terms', { type: 'checkbox' })}
-            />
-          )}
-        </Stack>
+            <h2 style={styles.title}>Reset Password</h2>
+            <p style={styles.description}>
+              Enter your email address and we'll send you a link to reset your password.
+            </p>
 
-        <Group justify="space-between" mt="xl">
-          <Anchor
-            component="button"
-            type="button"
-            c="dimmed"
-            onClick={() => {
-              toggle();
-              setError(null);
-              setSuccess(null);
-            }}
-            size="xs"
-          >
-            {type === 'register'
-              ? 'Already have an account? Login'
-              : "Don't have an account? Register"}
-          </Anchor>
-          <Button type="submit" radius="xl" loading={loading}>
-            {upperFirst(type)}
-          </Button>
-        </Group>
-      </form>
-    </Paper>
+            {error && (
+              <div style={styles.alertError}>
+                <span style={{ marginRight: '8px' }}>!</span>
+                <div style={{ flex: 1 }}>{error}</div>
+                <button
+                  style={styles.closeBtn}
+                  onClick={() => setError(null)}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
+            {success && (
+              <div style={styles.alertSuccess}>
+                <span style={{ marginRight: '8px' }}>✓</span>
+                <div>{success}</div>
+              </div>
+            )}
+
+            <form onSubmit={handleForgotPassword}>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Email Address</label>
+                <input
+                  type="email"
+                  style={styles.input}
+                  placeholder="admin@example.com"
+                  value={forgotForm.email}
+                  onChange={(e) =>
+                    setForgotForm({ ...forgotForm, email: e.target.value })
+                  }
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  ...styles.buttonPrimary,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.6 : 1
+                }}
+                disabled={loading}
+              >
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* RESET PASSWORD FORM */}
+        {currentForm === 'reset' && (
+          <div>
+            <h2 style={styles.title}>Create New Password</h2>
+            <p style={styles.description}>
+              Enter your new password below.
+            </p>
+
+            {error && (
+              <div style={styles.alertError}>
+                <span style={{ marginRight: '8px' }}>!</span>
+                <div style={{ flex: 1 }}>{error}</div>
+                <button
+                  style={styles.closeBtn}
+                  onClick={() => setError(null)}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
+            {success && (
+              <div style={styles.alertSuccess}>
+                <span style={{ marginRight: '8px' }}>✓</span>
+                <div>{success}</div>
+              </div>
+            )}
+
+            <form onSubmit={handleResetPassword}>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>New Password</label>
+                <input
+                  type="password"
+                  style={styles.input}
+                  placeholder="Enter new password"
+                  value={resetForm.password}
+                  onChange={(e) =>
+                    setResetForm({ ...resetForm, password: e.target.value })
+                  }
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Confirm Password</label>
+                <input
+                  type="password"
+                  style={styles.input}
+                  placeholder="Confirm password"
+                  value={resetForm.confirmPassword}
+                  onChange={(e) =>
+                    setResetForm({
+                      ...resetForm,
+                      confirmPassword: e.target.value
+                    })
+                  }
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  ...styles.buttonPrimary,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.6 : 1
+                }}
+                disabled={loading}
+              >
+                {loading ? 'Resetting...' : 'Reset Password'}
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
 export default AuthenticationForm;
+
+// Inline Styles
+const styles = {
+  container: {
+    maxWidth: '400px',
+    margin: '0 auto',
+    paddingTop: '40px',
+    padding: '20px'
+  },
+  card: {
+    background: '#fffffe',
+    border: '1px solid rgba(94, 82, 64, 0.2)',
+    borderRadius: '12px',
+    padding: '24px',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+  },
+  title: {
+    fontSize: '18px',
+    fontWeight: '500',
+    margin: '0 0 20px 0',
+    color: '#134252'
+  },
+  description: {
+    fontSize: '14px',
+    color: '#626c71',
+    marginBottom: '16px'
+  },
+  formGroup: {
+    marginBottom: '16px'
+  },
+  label: {
+    display: 'block',
+    fontSize: '14px',
+    fontWeight: '500',
+    marginBottom: '8px',
+    color: '#134252'
+  },
+  input: {
+    width: '100%',
+    padding: '8px 12px',
+    fontSize: '14px',
+    border: '1px solid rgba(94, 82, 64, 0.2)',
+    borderRadius: '8px',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    boxSizing: 'border-box',
+    transition: 'border-color 150ms, box-shadow 150ms'
+  },
+  alertError: {
+    padding: '12px 16px',
+    borderRadius: '8px',
+    marginBottom: '16px',
+    fontSize: '14px',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px',
+    background: 'rgba(192, 21, 47, 0.1)',
+    border: '1px solid rgba(192, 21, 47, 0.3)',
+    color: '#c0152f'
+  },
+  alertSuccess: {
+    padding: '12px 16px',
+    borderRadius: '8px',
+    marginBottom: '16px',
+    fontSize: '14px',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px',
+    background: 'rgba(34, 197, 94, 0.1)',
+    border: '1px solid rgba(34, 197, 94, 0.3)',
+    color: '#15803d'
+  },
+  closeBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'inherit',
+    cursor: 'pointer',
+    fontSize: '16px',
+    padding: '0',
+    marginLeft: 'auto'
+  },
+  buttonPrimary: {
+    width: '100%',
+    padding: '8px 16px',
+    fontSize: '14px',
+    fontWeight: '500',
+    border: 'none',
+    borderRadius: '8px',
+    background: '#208091',
+    color: 'white',
+    cursor: 'pointer',
+    transition: 'all 150ms',
+    marginBottom: '16px'
+  },
+  divider: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    margin: '20px 0',
+    color: '#626c71',
+    fontSize: '13px'
+  },
+  footer: {
+    marginTop: '20px',
+    paddingTop: '20px',
+    borderTop: '1px solid rgba(94, 82, 64, 0.2)',
+    textAlign: 'center'
+  },
+  link: {
+    color: '#208091',
+    cursor: 'pointer',
+    textDecoration: 'none',
+    fontWeight: '500',
+    background: 'none',
+    border: 'none',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontSize: '13px'
+  },
+  backLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '20px',
+    fontSize: '14px',
+    color: '#208091',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+  }
+};

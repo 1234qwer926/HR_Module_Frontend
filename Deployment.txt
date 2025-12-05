@@ -65,7 +65,7 @@ video recordings update path to the s3 bucket   -Done
 
 bulk cat questions upload end point -Done
 bulk video questions upload endpoint -Done
-bulk applications upload endpoint   
+bulk applications upload endpoint   -Done
 POST /cat-items - Create a new CAT question -Done   
 PUT /cat-items/{item_id} - Update an existing CAT question -Done
 DELETE /cat-items/{item_id} - Delete a CAT question -Done
@@ -84,3 +84,44 @@ Frontend Major Changes
     video hr Evaluation frontend page for the hr  --need changes like url of video and keep the evaluation in table format
 
 
+public users
+
+@app.post("/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
+@app.get("/jobs/{job_id}", response_model=JobResponse)
+@app.post("/applications", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/upload-to-s3")
+@app.post("/cat/start", response_model=CATExamStartResponse)
+@app.post("/cat/next-item", response_model=CATItemResponse)
+@app.post("/cat/submit-answer", response_model=CATAnswerResponse)
+@app.post("/cat/complete", response_model=CATExamResults)
+@app.put("/start-exam/{email}/{hr_video_exam_key}")
+@app.post("/video-responses/batch", response_model=List[VideoResponseDetail], status_code=status.HTTP_201_CREATED)
+
+
+
+authentication
+authorization
+
+
+--I want to Implement the basic auth from the .env file in the backend
+
+make it perfect with the mail templete different url for 2 tests
+Frontend ui changes at managing video questions
+Frontend ui for the video evaluation  
+frontend bulk appplication ui for admin -Done
+just dont update the cat percentile 
+
+
+
+
+bulk applications upload excel endpoint  --Done
+
+update instructions in the cat exam -done
+
+catdata for bulk upload -Done
+make change to recalibration to 10 and user need to take 30 questions or exit based on user ability  -Done
+navigation should not be there for some user exam login paths   -Done
+<Route path="/exam/login" element={<ExamLogin />} />
+        <Route path="/exam" element={<CATExam />} />
+        <Route path="/exam/complete" element={<ExamComplete />} />
+<Route path="/hr-video-exam" element={<HRVideoExamLogin />} />
