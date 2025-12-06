@@ -47,7 +47,7 @@ import ExamLogin from './CAT/ExamLogin';
 import HRVideoExamLogin from './HrVideoExam/HRVideoExamLogin';
 import VideoQuestionsManagement from './HrVideoExam/VideoQuestionsManagement';
 import HRVideoExamEvaluation from './HrVideoExam/HRVideoExamEvaluation';
-
+import VideoExamEvaluation from './HrVideoExam/VideoExamEvaluation';
 
 
 function App() {
@@ -89,7 +89,10 @@ function App() {
         <Route path="/video/review/:applicationId" element={<VideoReview />} />
 
         <Route path="/jobs/:id/applications" element={<JobApplications />} />
-        <Route path="/applications/:applicationId" element={<ApplicationDetails />} />
+        <Route
+          path="/applications/:applicationId"
+          element={<ApplicationDetails />}
+        />
 
         {/* CAT EXAM */}
         <Route path="/exam/login" element={<ExamLogin />} />
@@ -100,10 +103,19 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
         <Route path="/cat/management" element={<CATManagement />} />
 
-
         <Route path="/hr-video-exam" element={<HRVideoExamLogin />} />
-        <Route path="/hr-video-exam/questions-management" element={<VideoQuestionsManagement />} />
-        <Route path="/hr-video-exam/evaluation" element={<HRVideoExamEvaluation />} />
+        <Route
+          path="/hr-video-exam/questions-management"
+          element={<VideoQuestionsManagement />}
+        />
+        <Route
+          path="/hr-video-exam/evaluation"
+          element={<HRVideoExamEvaluation />}
+        />
+        <Route
+          path="/jobs/:id/video-exam-evaluation"
+          element={<VideoExamEvaluation />}
+        />
       </Routes>
       <FooterLinks />
     </div>

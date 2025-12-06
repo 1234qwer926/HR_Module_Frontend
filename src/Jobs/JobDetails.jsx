@@ -910,35 +910,45 @@ export default function JobDetails() {
             <Button variant="subtle" onClick={() => navigate('/jobs')}>
               Back to Jobs
             </Button>
-
             {userRole === 'hr' && (
-              <Group>
-                <Button
-                  variant="light"
-                  onClick={handleEditJob}
-                  leftSection={<IconPencil size={16} />}
-                >
-                  Edit Job
-                </Button>
+            <Group>
+              <Button
+                variant="light"
+                onClick={handleEditJob}
+                leftSection={<IconPencil size={16} />}
+              >
+                Edit Job
+              </Button>
 
-                <Button
-                  variant="light"
-                  onClick={handleViewApplications}
-                  leftSection={<IconListCheck size={16} />}
-                >
-                  View Applications
-                </Button>
+              <Button
+                variant="light"
+                onClick={handleViewApplications}
+                leftSection={<IconListCheck size={16} />}
+              >
+                View Applications
+              </Button>
 
-                <Button
-                  color="red"
-                  variant="outline"
-                  onClick={handleRequestDelete}
-                  leftSection={<IconTrash size={16} />}
-                >
-                  Delete Job
-                </Button>
-              </Group>
-            )}
+              {/* NEW: Video Exam Evaluation button */}
+              <Button
+                variant="light"
+                color="teal"
+                onClick={() => navigate(`/jobs/${job.id}/video-exam-evaluation`)}
+              >
+                Video Exam Evaluation
+              </Button>
+
+              <Button
+                color="red"
+                variant="outline"
+                onClick={handleRequestDelete}
+                leftSection={<IconTrash size={16} />}
+              >
+                Delete Job
+              </Button>
+            </Group>
+          )}
+
+
 
             {job.status === 'open' && (
               <Button
