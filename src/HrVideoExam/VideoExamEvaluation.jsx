@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -20,9 +20,52 @@ import {
   ActionIcon,
   TextInput,
   Tooltip,
+  Checkbox,
+  Modal,
+  Textarea,
 } from '@mantine/core';
-import { IconAlertCircle, IconChevronDown, IconChevronRight, IconPlayerPlay, IconVideo } from '@tabler/icons-react';
+import { 
+  IconAlertCircle, 
+  IconChevronDown, 
+  IconChevronRight, 
+  IconPlayerPlay, 
+  IconVideo,
+  IconMailForward,
+  IconSortAscending,
+  IconSortDescending,
+} from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+
+// Helper: Title case
+const toTitleCase = (str) => {
+  if (!str) return '-';
+  return str
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+};
+
+// Normalize UI → API
+const normalizeStatusForAPI = (s) => {
+  if (!s) return '';
+  const map = {
+    video_hr: 'video hr',
+    videohr: 'video hr',
+    final_interview: 'final interview',
+  };
+  return map[s] || s;
+};
+
+// Calculate percentile rank
+const calculatePercentile = (score, allScores) => {
+  if (score === null || score === undefined || allScores.length === 0) return null;
+  const validScores = allScores.filter(s => s !== null && s !== undefined);
+  if (validScores.length === 0) return null;
+  
+  const belowCount = validScores.filter(s => s < score).length;
+  const percentile = (belowCount / validScores.length) * 100;
+  return percentile.toFixed(1);
+};
 
 export default function VideoExamEvaluation() {
   const { id } = useParams();
@@ -34,15 +77,48 @@ export default function VideoExamEvaluation() {
   const [error, setError] = useState(null);
   const [expandedRows, setExpandedRows] = useState({});
   const [updatingScores, setUpdatingScores] = useState(false);
-  const [loadingVideoUrl, setLoadingVideoUrl] = useState(null); // Track which video is loading
+  const [loadingVideoUrl, setLoadingVideoUrl] = useState(null);
 
   // Store edited HR scores and feedback
   const [editedResponses, setEditedResponses] = useState({});
 
-  const [sortBy, setSortBy] = useState('resume_score');
+  // Filters
+  const [stageFilter, setStageFilter] = useState('both'); // 'both', 'video hr', 'final interview'
+  const [sortBy, setSortBy] = useState('final_score');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [topN, setTopN] = useState(10);
 
+  // Bulk selection state
+  const [selectedApps, setSelectedApps] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
+
+  // Modal state - Bulk Status Update
+  const [modalOpened, setModalOpened] = useState(false);
+  const [bulkStage, setBulkStage] = useState('');
+  const [bulkMessage, setBulkMessage] = useState('');
+  const [bulkSendEmail, setBulkSendEmail] = useState(true);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+
   const HR_REVIEWER_ID = 1;
+
+  // Stage filter options
+  const stageFilterOptions = [
+    { value: 'both', label: 'Both (Video HR + Final Interview)' },
+    { value: 'video hr', label: 'Video HR Only' },
+    { value: 'final interview', label: 'Final Interview Only' },
+  ];
+
+  // Stage options for bulk update
+  const stageOptions = [
+    { value: 'applied', label: 'Applied' },
+    { value: 'screening', label: 'Screening' },
+    { value: 'aptitude', label: 'Aptitude' },
+    { value: 'video hr', label: 'Video HR' },
+    { value: 'final_interview', label: 'Final Interview' },
+    { value: 'offer', label: 'Offer' },
+    { value: 'hired', label: 'Hired' },
+    { value: 'rejected', label: 'Rejected' },
+  ];
 
   // --------------------------------------------------
   // Open video in new tab
@@ -65,7 +141,6 @@ export default function VideoExamEvaluation() {
       if (res.ok) {
         const data = await res.json();
         if (data.url) {
-          // Open in new tab
           window.open(data.url, '_blank');
         } else {
           notifications.show({
@@ -122,6 +197,31 @@ export default function VideoExamEvaluation() {
   };
 
   // --------------------------------------------------
+  // Calculate Final Score (Average of CAT Score + Video Exam Score)
+  // --------------------------------------------------
+  const calculateFinalScore = (app, videoScore) => {
+    const catTheta = app.cattheta ?? app.cat_theta ?? app.catTheta ?? null;
+    const videoExamScore = videoScore !== null ? parseFloat(videoScore) : null;
+
+    // Normalize CAT theta to 0-10 scale (typically theta ranges from -3 to +3)
+    // Map -3 to 0, and +3 to 10
+    let normalizedCatScore = null;
+    if (catTheta !== null && catTheta !== undefined) {
+      normalizedCatScore = ((parseFloat(catTheta) + 3) / 6) * 10;
+      normalizedCatScore = Math.max(0, Math.min(10, normalizedCatScore));
+    }
+
+    if (normalizedCatScore !== null && videoExamScore !== null) {
+      return ((normalizedCatScore + videoExamScore) / 2).toFixed(2);
+    } else if (normalizedCatScore !== null) {
+      return normalizedCatScore.toFixed(2);
+    } else if (videoExamScore !== null) {
+      return videoExamScore.toFixed(2);
+    }
+    return null;
+  };
+
+  // --------------------------------------------------
   // Fetch video responses for a single application
   // --------------------------------------------------
   const fetchVideoResponses = async (applicationId) => {
@@ -145,6 +245,9 @@ export default function VideoExamEvaluation() {
     setLoading(true);
     setError(null);
     setEditedResponses({});
+    setSelectedApps([]);
+    setSelectAll(false);
+    
     try {
       const res = await fetch(`http://localhost:8000/jobs/${id}/applications`);
       if (res.ok) {
@@ -153,6 +256,7 @@ export default function VideoExamEvaluation() {
 
         console.log('📋 Total applications from API:', list.length);
 
+        // Filter to both VIDEO HR and FINAL INTERVIEW stages
         const filtered = list.filter((app) => {
           const stage = (
             app.currentstage || 
@@ -160,10 +264,10 @@ export default function VideoExamEvaluation() {
             app.currentStage || 
             ''
           ).toLowerCase().trim();
-          return stage === 'video hr';
+          return stage === 'video hr' || stage === 'final interview' || stage === 'final_interview';
         });
 
-        console.log('🎥 VIDEO HR candidates:', filtered.length);
+        console.log('🎥 VIDEO HR + FINAL INTERVIEW candidates:', filtered.length);
         setApplications(filtered);
 
         const responsesMap = {};
@@ -188,6 +292,190 @@ export default function VideoExamEvaluation() {
   useEffect(() => {
     fetchApplications();
   }, [id]);
+
+  // --------------------------------------------------
+  // Processed applications with calculated scores and percentiles
+  // --------------------------------------------------
+  const processedApps = useMemo(() => {
+    // Apply stage filter
+    let filtered = [...applications];
+    
+    if (stageFilter !== 'both') {
+      filtered = filtered.filter((app) => {
+        const stage = (
+          app.currentstage || 
+          app.current_stage || 
+          app.currentStage || 
+          ''
+        ).toLowerCase().trim();
+        
+        if (stageFilter === 'video hr') {
+          return stage === 'video hr';
+        } else if (stageFilter === 'final interview') {
+          return stage === 'final interview' || stage === 'final_interview';
+        }
+        return true;
+      });
+    }
+
+    // Calculate scores for each application
+    const appsWithScores = filtered.map((app) => {
+      const videoScore = calculateVideoExamScore(app.id);
+      const finalScore = calculateFinalScore(app, videoScore);
+      const catTheta = app.cattheta ?? app.cat_theta ?? app.catTheta ?? null;
+      
+      return {
+        ...app,
+        videoExamScore: videoScore,
+        finalScore: finalScore,
+        catTheta: catTheta,
+      };
+    });
+
+    // Calculate CAT percentile for all users
+    const allCatScores = appsWithScores
+      .map(app => app.catTheta)
+      .filter(score => score !== null && score !== undefined);
+
+    const appsWithPercentiles = appsWithScores.map((app) => ({
+      ...app,
+      catPercentile: calculatePercentile(app.catTheta, allCatScores),
+    }));
+
+    // Sort
+    appsWithPercentiles.sort((a, b) => {
+      let aVal, bVal;
+
+      switch (sortBy) {
+        case 'final_score':
+          aVal = parseFloat(a.finalScore) || 0;
+          bVal = parseFloat(b.finalScore) || 0;
+          break;
+        case 'video_score':
+          aVal = parseFloat(a.videoExamScore) || 0;
+          bVal = parseFloat(b.videoExamScore) || 0;
+          break;
+        case 'cat_theta':
+          aVal = parseFloat(a.catTheta) || 0;
+          bVal = parseFloat(b.catTheta) || 0;
+          break;
+        case 'cat_percentile':
+          aVal = parseFloat(a.catPercentile) || 0;
+          bVal = parseFloat(b.catPercentile) || 0;
+          break;
+        case 'resume_score':
+          aVal = a.resumescore ?? a.resume_score ?? 0;
+          bVal = b.resumescore ?? b.resume_score ?? 0;
+          break;
+        case 'id':
+          aVal = a.id || 0;
+          bVal = b.id || 0;
+          break;
+        default:
+          aVal = 0;
+          bVal = 0;
+      }
+
+      return sortOrder === 'desc' ? bVal - aVal : aVal - bVal;
+    });
+
+    // Apply Top N
+    return topN > 0 ? appsWithPercentiles.slice(0, topN) : appsWithPercentiles;
+  }, [applications, videoResponses, editedResponses, stageFilter, sortBy, sortOrder, topN]);
+
+  // --------------------------------------------------
+  // Toggle sort on column click
+  // --------------------------------------------------
+  const toggleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortBy(field);
+      setSortOrder('desc');
+    }
+  };
+
+  // --------------------------------------------------
+  // Selection handlers
+  // --------------------------------------------------
+  const handleSelectChange = (appId, checked) => {
+    setSelectedApps((prev) => {
+      if (checked) {
+        return [...prev, appId];
+      } else {
+        return prev.filter((id) => id !== appId);
+      }
+    });
+  };
+
+  const handleSelectAll = (checked) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedApps(processedApps.map((a) => a.id));
+    } else {
+      setSelectedApps([]);
+    }
+  };
+
+  // --------------------------------------------------
+  // Bulk Status Update Handler
+  // --------------------------------------------------
+  const handleBulkStatusUpdate = async () => {
+    if (selectedApps.length === 0 || !bulkStage) {
+      notifications.show({
+        title: 'Error',
+        message: 'Please select candidates and a stage',
+        color: 'red',
+      });
+      return;
+    }
+
+    setBulkUpdating(true);
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('new_status', normalizeStatusForAPI(bulkStage));
+      queryParams.append('send_email', bulkSendEmail);
+      if (bulkMessage.trim()) {
+        queryParams.append('custom_message', bulkMessage.trim());
+      }
+
+      const url = `http://localhost:8000/applications/bulk-status-simple?${queryParams.toString()}`;
+
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(selectedApps),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || 'Update failed');
+      }
+
+      notifications.show({
+        title: 'Success!',
+        message: `Updated ${selectedApps.length} candidate(s) → ${toTitleCase(bulkStage)}`,
+        color: 'green',
+      });
+
+      setModalOpened(false);
+      setBulkStage('');
+      setBulkMessage('');
+      setBulkSendEmail(true);
+      setSelectedApps([]);
+      setSelectAll(false);
+
+      fetchApplications();
+    } catch (e) {
+      notifications.show({
+        title: 'Update Failed',
+        message: e.message,
+        color: 'red',
+      });
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
 
   const toggleExpand = (appId) => {
     setExpandedRows((prev) => ({
@@ -301,30 +589,6 @@ export default function VideoExamEvaluation() {
     }
   };
 
-  const sorted = [...applications].sort((a, b) => {
-    if (sortBy === 'resume_score') {
-      const scoreA = a.resumescore ?? a.resume_score ?? 0;
-      const scoreB = b.resumescore ?? b.resume_score ?? 0;
-      return scoreB - scoreA;
-    }
-    if (sortBy === 'cat_theta') {
-      const thetaA = a.cattheta ?? a.cat_theta ?? 0;
-      const thetaB = b.cattheta ?? b.cat_theta ?? 0;
-      return thetaB - thetaA;
-    }
-    if (sortBy === 'video_score') {
-      const scoreA = calculateVideoExamScore(a.id) || 0;
-      const scoreB = calculateVideoExamScore(b.id) || 0;
-      return parseFloat(scoreB) - parseFloat(scoreA);
-    }
-    if (sortBy === 'id') {
-      return (a.id || 0) - (b.id || 0);
-    }
-    return 0;
-  });
-
-  const limited = topN && topN > 0 ? sorted.slice(0, topN) : sorted;
-
   const getStageColor = (stage) => {
     const s = (stage || '').toLowerCase();
     if (s.includes('video')) return 'blue';
@@ -341,6 +605,25 @@ export default function VideoExamEvaluation() {
     if (numScore >= 4) return 'yellow';
     return 'red';
   };
+
+  // --------------------------------------------------
+  // Render sortable header
+  // --------------------------------------------------
+  const renderSortableHeader = (label, field) => (
+    <Table.Th 
+      onClick={() => toggleSort(field)} 
+      style={{ cursor: 'pointer', userSelect: 'none' }}
+    >
+      <Group gap={4} wrap="nowrap">
+        {label}
+        {sortBy === field && (
+          sortOrder === 'desc' 
+            ? <IconSortDescending size={14} /> 
+            : <IconSortAscending size={14} />
+        )}
+      </Group>
+    </Table.Th>
+  );
 
   // --------------------------------------------------
   // Render video responses table for expanded row
@@ -475,54 +758,85 @@ export default function VideoExamEvaluation() {
     );
   };
 
-  const rows = limited.map((app) => {
+  // --------------------------------------------------
+  // Table rows with checkbox and expandable feature
+  // --------------------------------------------------
+  const rows = processedApps.map((app) => {
     const name = app.fullname || app.full_name || app.fullName || '-';
     const email = app.email || '-';
     const stage = app.currentstage || app.current_stage || app.currentStage || '-';
-    const catTheta = app.cattheta ?? app.cat_theta ?? app.catTheta ?? '-';
     const isExpanded = expandedRows[app.id] || false;
     const responseCount = (videoResponses[app.id] || []).length;
-    const videoExamScore = calculateVideoExamScore(app.id);
+    const isSelected = selectedApps.includes(app.id);
 
     return (
       <React.Fragment key={app.id}>
         <Table.Tr 
-          style={{ cursor: 'pointer' }}
-          onClick={() => toggleExpand(app.id)}
+          style={{ cursor: 'pointer', backgroundColor: isSelected ? '#e7f5ff' : undefined }}
         >
-          <Table.Td>
+          <Table.Td onClick={(e) => e.stopPropagation()}>
+            <Checkbox
+              checked={isSelected}
+              onChange={(e) => handleSelectChange(app.id, e.currentTarget.checked)}
+            />
+          </Table.Td>
+          <Table.Td onClick={() => toggleExpand(app.id)}>
             <ActionIcon variant="subtle" size="sm">
               {isExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
             </ActionIcon>
           </Table.Td>
-          <Table.Td>{app.id}</Table.Td>
-          <Table.Td>{name}</Table.Td>
-          <Table.Td>{email}</Table.Td>
-          <Table.Td>
+          <Table.Td onClick={() => toggleExpand(app.id)}>{app.id}</Table.Td>
+          <Table.Td onClick={() => toggleExpand(app.id)}>{name}</Table.Td>
+          <Table.Td onClick={() => toggleExpand(app.id)}>{email}</Table.Td>
+          <Table.Td onClick={() => toggleExpand(app.id)}>
             <Badge color={getStageColor(stage)} variant="light">
-              {stage.toUpperCase()}
+              {toTitleCase(stage)}
             </Badge>
           </Table.Td>
-          <Table.Td>{catTheta}</Table.Td>
-          <Table.Td>
-            {videoExamScore !== null ? (
-              <Badge color={getScoreBadgeColor(videoExamScore)} variant="filled" size="lg">
-                {videoExamScore}
-              </Badge>
+          <Table.Td onClick={() => toggleExpand(app.id)}>
+            {app.catTheta !== null ? (
+              <Text fw={600}>{parseFloat(app.catTheta).toFixed(2)}</Text>
             ) : (
-              <Text size="sm" c="dimmed">-</Text>
+              <Text c="dimmed">-</Text>
             )}
           </Table.Td>
-          <Table.Td>
+          <Table.Td onClick={() => toggleExpand(app.id)}>
+            {app.catPercentile !== null ? (
+              <Badge color="cyan" variant="light">
+                {app.catPercentile}%
+              </Badge>
+            ) : (
+              <Text c="dimmed">-</Text>
+            )}
+          </Table.Td>
+          <Table.Td onClick={() => toggleExpand(app.id)}>
+            {app.videoExamScore !== null ? (
+              <Badge color={getScoreBadgeColor(app.videoExamScore)} variant="filled">
+                {app.videoExamScore}
+              </Badge>
+            ) : (
+              <Text c="dimmed">-</Text>
+            )}
+          </Table.Td>
+          <Table.Td onClick={() => toggleExpand(app.id)}>
+            {app.finalScore !== null ? (
+              <Badge color={getScoreBadgeColor(app.finalScore)} variant="filled" size="lg">
+                {app.finalScore}
+              </Badge>
+            ) : (
+              <Text c="dimmed">-</Text>
+            )}
+          </Table.Td>
+          <Table.Td onClick={() => toggleExpand(app.id)}>
             <Badge color="gray" variant="light">
-              {responseCount} response(s)
+              {responseCount}
             </Badge>
           </Table.Td>
         </Table.Tr>
 
         {isExpanded && (
           <Table.Tr>
-            <Table.Td colSpan={8} style={{ backgroundColor: '#f8f9fa', padding: 0 }}>
+            <Table.Td colSpan={11} style={{ backgroundColor: '#f8f9fa', padding: 0 }}>
               <Collapse in={isExpanded}>
                 <Box p="md">
                   <Title order={5} mb="sm">
@@ -541,48 +855,85 @@ export default function VideoExamEvaluation() {
 
   return (
     <Container size="xl" py="xl">
+      {/* Header */}
       <Group justify="space-between" mb="md">
         <div>
           <Title order={2}>Video Exam Evaluation</Title>
           <Text size="sm" c="dimmed">
             Job ID: {id} • Showing candidates in{' '}
-            <Badge color="blue" variant="light">VIDEO HR</Badge> stage
+            <Badge color="blue" variant="light">VIDEO HR</Badge>{' '}
+            &{' '}
+            <Badge color="green" variant="light">FINAL INTERVIEW</Badge>{' '}
+            stages
           </Text>
         </div>
 
-        <Group>
+        <Button variant="outline" onClick={() => navigate(-1)}>
+          Back
+        </Button>
+      </Group>
+
+      {/* Filters Row */}
+      <Paper withBorder p="md" mb="md" radius="md">
+        <Group grow align="flex-end">
+          <Select
+            label="Filter by Stage"
+            data={stageFilterOptions}
+            value={stageFilter}
+            onChange={setStageFilter}
+          />
           <Select
             label="Sort By"
-            size="xs"
-            value={sortBy}
-            onChange={setSortBy}
             data={[
-              { value: 'resume_score', label: 'Resume Score' },
-              { value: 'cat_theta', label: 'CAT θ' },
+              { value: 'final_score', label: 'Final Score' },
               { value: 'video_score', label: 'Video Exam Score' },
+              { value: 'cat_theta', label: 'CAT θ' },
+              { value: 'cat_percentile', label: 'CAT Percentile' },
+              { value: 'resume_score', label: 'Resume Score' },
               { value: 'id', label: 'ID' },
             ]}
+            value={sortBy}
+            onChange={setSortBy}
           />
           <NumberInput
-            label="Top N"
-            size="xs"
+            label="Top N Candidates"
             min={0}
             value={topN}
             onChange={(value) => setTopN(Number(value) || 0)}
-            style={{ width: 80 }}
           />
           <Button variant="default" onClick={fetchApplications}>
             Refresh
           </Button>
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            Back
+          <Button
+            variant="outline"
+            onClick={() => {
+              setStageFilter('both');
+              setSortBy('final_score');
+              setSortOrder('desc');
+              setTopN(10);
+              setSelectedApps([]);
+              setSelectAll(false);
+            }}
+          >
+            Reset Filters
           </Button>
         </Group>
-      </Group>
+      </Paper>
 
-      <Text size="sm" c="dimmed" mb="xs">
-        Total: {applications.length} | Showing: {limited.length}
-      </Text>
+      {/* Summary and Bulk Update Button */}
+      <Group justify="space-between" mb="xs">
+        <Text size="sm" c="dimmed">
+          Total: {applications.length} | Showing: {processedApps.length} | Selected: {selectedApps.length}
+        </Text>
+        <Button
+          color="blue"
+          leftSection={<IconMailForward size={18} />}
+          disabled={selectedApps.length === 0}
+          onClick={() => setModalOpened(true)}
+        >
+          Update Selected ({selectedApps.length})
+        </Button>
+      </Group>
 
       <Paper withBorder radius="md" p="md">
         {loading ? (
@@ -595,20 +946,29 @@ export default function VideoExamEvaluation() {
             {error}
           </Alert>
         ) : applications.length === 0 ? (
-          <Alert color="yellow" title="No candidates in VIDEO HR stage">
-            There are no applications currently in the Video HR stage for this job.
+          <Alert color="yellow" title="No candidates">
+            There are no applications currently in the Video HR or Final Interview stage for this job.
           </Alert>
         ) : (
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
+                <Table.Th style={{ width: 40 }}>
+                  <Checkbox
+                    checked={selectAll}
+                    indeterminate={selectedApps.length > 0 && selectedApps.length < processedApps.length}
+                    onChange={(e) => handleSelectAll(e.currentTarget.checked)}
+                  />
+                </Table.Th>
                 <Table.Th style={{ width: 40 }}></Table.Th>
                 <Table.Th>ID</Table.Th>
                 <Table.Th>Name</Table.Th>
                 <Table.Th>Email</Table.Th>
                 <Table.Th>Stage</Table.Th>
-                <Table.Th>CAT θ</Table.Th>
-                <Table.Th>Video Exam Score</Table.Th>
+                {renderSortableHeader('CAT θ', 'cat_theta')}
+                {renderSortableHeader('CAT %ile', 'cat_percentile')}
+                {renderSortableHeader('Video Score', 'video_score')}
+                {renderSortableHeader('Final Score', 'final_score')}
                 <Table.Th>Responses</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -616,6 +976,82 @@ export default function VideoExamEvaluation() {
           </Table>
         )}
       </Paper>
+
+      {/* MODAL: Bulk Update Status */}
+      <Modal
+        opened={modalOpened}
+        onClose={() => {
+          setModalOpened(false);
+          setBulkMessage('');
+          setBulkStage('');
+        }}
+        title={`Bulk Update ${selectedApps.length} Application${selectedApps.length > 1 ? 's' : ''}`}
+        size="lg"
+      >
+        <Stack gap="md">
+          <Select
+            label="New Stage"
+            data={stageOptions}
+            value={bulkStage}
+            onChange={setBulkStage}
+            required
+            placeholder="Select stage"
+          />
+          <Textarea
+            label="Custom Email Message (Optional)"
+            placeholder="Thank you for your interest..."
+            value={bulkMessage}
+            onChange={(e) => setBulkMessage(e.currentTarget.value)}
+            minRows={4}
+          />
+          <Checkbox
+            label="Send personalized email to each candidate"
+            checked={bulkSendEmail}
+            onChange={(e) => setBulkSendEmail(e.currentTarget.checked)}
+          />
+          
+          {bulkStage === 'aptitude' && bulkSendEmail && (
+            <Alert color="blue" title="Auto Exam Key">
+              Unique 8-character keys will be generated and emailed.
+            </Alert>
+          )}
+          {(bulkStage === 'video hr' || bulkStage === 'video_hr') && bulkSendEmail && (
+            <Alert color="blue" title="Video HR Invite">
+              Video interview keys will be generated and sent.
+            </Alert>
+          )}
+          {bulkStage === 'final_interview' && bulkSendEmail && (
+            <Alert color="green" title="Final Interview">
+              Candidates will be notified for the final interview round.
+            </Alert>
+          )}
+          {bulkStage === 'rejected' && bulkSendEmail && (
+            <Alert color="red" title="Rejection Notice">
+              A rejection email will be sent to the selected candidates.
+            </Alert>
+          )}
+          {(bulkStage === 'offer' || bulkStage === 'hired') && bulkSendEmail && (
+            <Alert color="teal" title="Offer/Hired">
+              Congratulations email will be sent to selected candidates.
+            </Alert>
+          )}
+
+          <Group justify="flex-end" mt="md">
+            <Button variant="light" onClick={() => setModalOpened(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="blue"
+              loading={bulkUpdating}
+              onClick={handleBulkStatusUpdate}
+              leftSection={<IconMailForward size={16} />}
+              disabled={!bulkStage}
+            >
+              Update & Notify
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Container>
   );
 }
