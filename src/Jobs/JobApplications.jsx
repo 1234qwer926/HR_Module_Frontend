@@ -270,7 +270,6 @@ export default function JobApplications() {
     try {
       const formData = new FormData();
       formData.append('file', uploadFile);
-      formData.append('job_id', id);  // ✅ Send job_id in FormData body
       
       // Simulate progress
       const progressInterval = setInterval(() => {
@@ -278,7 +277,7 @@ export default function JobApplications() {
       }, 500);
 
       // ✅ No query parameters - job_id in body
-      const url = `http://localhost:8000/applications/bulk-upload`;
+      const url = `http://localhost:8000/applications/bulk-upload?job_id=${id}`;
 
       const res = await fetch(url, {
         method: 'POST',
