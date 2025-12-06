@@ -41,9 +41,7 @@ export default function HeaderSimple() {
     // { link: '/jobs', label: 'Jobs', icon: IconBriefcase },
     { link: '/applications', label: 'Applications', icon: IconFileText },
     { link: '/hr-video-exam/questions-management', label: 'Video Questions', icon: IconVideo },
-    { link: '/cat/management', label: 'CAT Management', icon: IconFileText },
-    { link: '/hr-video-exam/evaluation', label: 'Video Exam Management', icon: IconFileText }
-    
+    { link: '/cat/management', label: 'CAT Management', icon: IconFileText },    
   ];
 
  
