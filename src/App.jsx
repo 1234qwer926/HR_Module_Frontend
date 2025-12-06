@@ -32,7 +32,6 @@ import CATManagement from './CAT/CATManagement';
 import HRDashboard from './Dashboard/HRDashboard';
 
 // Video Interview
-import VideoQuestionList from './VideoInterview/VideoQuestionList';
 import VideoRecorder from './VideoInterview/VideoRecorder';
 import VideoReview from './VideoInterview/VideoReview';
 
@@ -86,7 +85,6 @@ function App() {
         <Route path="/hr/dashboard" element={<HRDashboard />} />
 
         {/* ============ VIDEO INTERVIEW ROUTES ============ */}
-        <Route path="/video/questions" element={<VideoQuestionList />} />
         <Route path="/video/record/:questionId" element={<VideoRecorder />} />
         <Route path="/video/review/:applicationId" element={<VideoReview />} />
 

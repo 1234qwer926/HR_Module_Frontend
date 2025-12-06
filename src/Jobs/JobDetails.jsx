@@ -1,17 +1,17 @@
-// src/pages/JobDetails.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container, Paper, Title, Text, Badge, Button, Stack, Group,
   Divider, Loader, Alert, Grid, Accordion, Modal, MultiSelect,
-  Table, ActionIcon
+  Table, ActionIcon, Tooltip, Dialog
 } from '@mantine/core';
 import {
   IconBriefcase, IconMapPin, IconClock, IconAlertCircle,
   IconCircleCheck, IconUsers, IconCurrencyDollar, IconTrash,
-  IconPencil, IconListCheck, IconVideo, IconPlus, IconX
+  IconPencil, IconListCheck, IconVideo, IconPlus, IconX, IconReload
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+
 
 export default function JobDetails() {
   const { id } = useParams();
@@ -20,9 +20,7 @@ export default function JobDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Public applications allowed (no role check for applying)
   const userRole = localStorage.getItem('role');
-  const isLoggedIn = !!localStorage.getItem('token');
 
   // Delete modal state
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -36,13 +34,19 @@ export default function JobDetails() {
   const [loadingVideoQuestions, setLoadingVideoQuestions] = useState(false);
   const [assigningQuestions, setAssigningQuestions] = useState(false);
 
+  // Remove confirmation dialog
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [removingMappingId, setRemovingMappingId] = useState(null);
+  const [removingQuestion, setRemovingQuestion] = useState(false);
+
+
   useEffect(() => {
     fetchJobDetails();
     if (userRole === 'hr') {
       fetchAssignedVideoQuestions();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, userRole]);
+
 
   const fetchJobDetails = async () => {
     try {
@@ -55,59 +59,69 @@ export default function JobDetails() {
       }
     } catch (err) {
       setError('Error loading job details');
-      // eslint-disable-next-line no-console
       console.error('Error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Assigned questions for a job
+
+  // ============================================================
+  // FETCH ASSIGNED VIDEO QUESTIONS
+  // ============================================================
   const fetchAssignedVideoQuestions = async () => {
     try {
+      console.log('📥 Fetching assigned questions for job:', id);
       const response = await fetch(`http://localhost:8000/jobs/${id}/video-questions`);
+      
       if (response.ok) {
         const data = await response.json();
-        // Support both array and { video_questions: [] } shapes
-        const list = Array.isArray(data) ? data : (data.video_questions || []);
-        setAssignedVideoQuestions(list);
+        console.log('📦 Backend response:', data);
+        
+        const questions = Array.isArray(data) ? data : [];
+        const sorted = questions.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+        
+        setAssignedVideoQuestions(sorted);
+        console.log('✅ Loaded', sorted.length, 'assigned questions');
       } else {
-        // Non-fatal: show notification
-        notifications.show({
-          title: 'Warning',
-          message: 'Could not load assigned video questions',
-          color: 'yellow',
-        });
+        console.error('❌ Failed to load assigned questions');
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Error fetching assigned video questions:', err);
-      notifications.show({
-        title: 'Error',
-        message: 'Network error while loading assigned video questions',
-        color: 'red',
-      });
+      console.error('❌ Error fetching assigned video questions:', err);
     }
   };
 
-  // All available questions
+
+  // ============================================================
+  // FETCH ALL AVAILABLE VIDEO QUESTIONS (FILTERED)
+  // ============================================================
   const fetchAllVideoQuestions = async () => {
     setLoadingVideoQuestions(true);
     try {
+      console.log('📥 Fetching all available video questions...');
       const response = await fetch('http://localhost:8000/video-questions?active_only=true');
+      
       if (response.ok) {
         const data = await response.json();
-        setAllVideoQuestions(data || []);
+        const assignedVideoQuestionIds = assignedVideoQuestions.map(q => q.video_question_id);
+        
+        console.log('🔗 Already assigned video_question_ids:', assignedVideoQuestionIds);
+        
+        const availableQuestions = (data || []).filter(
+          q => !assignedVideoQuestionIds.includes(q.id)
+        );
+        
+        console.log('✅ Available (unassigned) questions:', availableQuestions.length);
+        setAllVideoQuestions(availableQuestions);
       } else {
         notifications.show({
           title: 'Error',
-          message: 'Failed to load video questions',
+          message: 'Failed to load video questions library',
           color: 'red',
         });
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Error fetching video questions:', err);
+      console.error('❌ Error fetching video questions:', err);
       notifications.show({
         title: 'Error',
         message: 'Network error while loading video questions',
@@ -118,14 +132,21 @@ export default function JobDetails() {
     }
   };
 
+
+  // ============================================================
+  // OPEN VIDEO QUESTIONS MODAL
+  // ============================================================
   const handleOpenVideoQuestionsModal = async () => {
+    console.log('🔓 Opening video questions modal...');
     setVideoQuestionsModalOpen(true);
     await fetchAllVideoQuestions();
-    // Pre-select already assigned IDs
-    const assignedIds = assignedVideoQuestions.map((q) => q.id?.toString());
-    setSelectedQuestionIds(assignedIds.filter(Boolean));
+    setSelectedQuestionIds([]);
   };
 
+
+  // ============================================================
+  // ASSIGN VIDEO QUESTIONS TO JOB
+  // ============================================================
   const handleAssignVideoQuestions = async () => {
     if (selectedQuestionIds.length === 0) {
       notifications.show({
@@ -139,16 +160,17 @@ export default function JobDetails() {
     setAssigningQuestions(true);
 
     try {
-      const currentlyAssignedIds = assignedVideoQuestions.map((q) => q.id);
-      const toAdd = selectedQuestionIds
-        .map((s) => parseInt(s, 10))
-        .filter((qid) => !currentlyAssignedIds.includes(qid));
-
+      console.log('📝 Adding Questions:', selectedQuestionIds);
+      
       let successCount = 0;
       let errorCount = 0;
 
-      for (let i = 0; i < toAdd.length; i++) {
-        const questionId = toAdd[i];
+      for (let i = 0; i < selectedQuestionIds.length; i++) {
+        const questionId = parseInt(selectedQuestionIds[i], 10);
+        const displayOrder = assignedVideoQuestions.length + i;
+        
+        console.log(`➕ Adding Question ID ${questionId} with order ${displayOrder}`);
+        
         try {
           const resp = await fetch('http://localhost:8000/job-video-questions', {
             method: 'POST',
@@ -156,16 +178,21 @@ export default function JobDetails() {
             body: JSON.stringify({
               job_id: parseInt(id, 10),
               video_question_id: questionId,
-              display_order: (assignedVideoQuestions?.length || 0) + i,
+              display_order: displayOrder,
             }),
           });
 
           if (resp.ok) {
+            const result = await resp.json();
+            console.log(`✅ Added successfully. Mapping ID: ${result.id}`);
             successCount += 1;
           } else {
+            const errData = await resp.json().catch(() => ({}));
+            console.error(`❌ Failed to add question ${questionId}:`, errData);
             errorCount += 1;
           }
-        } catch {
+        } catch (err) {
+          console.error(`❌ Error adding question ${questionId}:`, err);
           errorCount += 1;
         }
       }
@@ -173,21 +200,23 @@ export default function JobDetails() {
       if (successCount > 0) {
         notifications.show({
           title: 'Success',
-          message: `Assigned ${successCount} video question(s)`,
+          message: `Added ${successCount} question(s) successfully`,
           color: 'green',
         });
       }
       if (errorCount > 0) {
         notifications.show({
-          title: 'Partial',
-          message: `${errorCount} question(s) could not be assigned`,
+          title: 'Warning',
+          message: `${errorCount} operation(s) failed`,
           color: 'yellow',
         });
       }
 
       await fetchAssignedVideoQuestions();
       setVideoQuestionsModalOpen(false);
-    } catch {
+      setSelectedQuestionIds([]);
+    } catch (err) {
+      console.error('❌ Error assigning questions:', err);
       notifications.show({
         title: 'Error',
         message: 'Failed to assign video questions',
@@ -198,40 +227,77 @@ export default function JobDetails() {
     }
   };
 
-  const handleRemoveVideoQuestion = async (questionId) => {
-    if (!window.confirm('Remove this video question from this job?')) return;
+
+  // ============================================================
+  // REMOVE SINGLE VIDEO QUESTION
+  // ============================================================
+  const handleRemoveVideoQuestion = (mappingId, questionText) => {
+    console.log('🗑️ Requesting removal of mapping ID:', mappingId);
+    setRemovingMappingId(mappingId);
+    setRemoveDialogOpen(true);
+  };
+
+
+  const handleConfirmRemoveQuestion = async () => {
+    if (!removingMappingId) {
+      console.error('❌ No mapping ID set for removal');
+      return;
+    }
+
+    setRemovingQuestion(true);
 
     try {
+      console.log('🗑️ Deleting JobVideoQuestion mapping ID:', removingMappingId);
+      
       const response = await fetch(
-        `http://localhost:8000/job-video-questions/${id}/${questionId}`,
-        { method: 'DELETE', headers: { 'Content-Type': 'application/json' } }
+        `http://localhost:8000/job-video-questions/${removingMappingId}`,
+        { 
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' }
+        }
       );
 
+      console.log('📡 Delete Response Status:', response.status);
+
       if (response.ok) {
+        console.log('✅ Successfully removed mapping');
         notifications.show({
           title: 'Removed',
-          message: 'Video question removed from job',
+          message: 'Video question removed from job successfully',
           color: 'green',
         });
         await fetchAssignedVideoQuestions();
       } else {
-        const data = await response.json().catch(() => ({}));
+        const errorText = await response.text();
+        console.error('❌ Delete failed:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { detail: errorText };
+        }
+        
         notifications.show({
           title: 'Error',
-          message: data.detail || 'Failed to remove video question',
+          message: errorData.detail || 'Failed to remove video question',
           color: 'red',
         });
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Error removing video question:', err);
+      console.error('❌ Network error removing video question:', err);
       notifications.show({
         title: 'Error',
         message: 'Network error while removing video question',
         color: 'red',
       });
+    } finally {
+      setRemovingQuestion(false);
+      setRemoveDialogOpen(false);
+      setRemovingMappingId(null);
     }
   };
+
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -242,6 +308,7 @@ export default function JobDetails() {
     }
   };
 
+
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'high': return 'red';
@@ -251,19 +318,23 @@ export default function JobDetails() {
     }
   };
 
+
   const handleViewApplications = () => {
     if (!job) return;
     navigate(`/jobs/${job.id}/applications`);
   };
+
 
   const handleEditJob = () => {
     if (!job) return;
     navigate(`/jobs/edit/${job.id}`);
   };
 
+
   const handleRequestDelete = () => {
     setDeleteOpen(true);
   };
+
 
   const handleConfirmDelete = async () => {
     if (!job) return;
@@ -273,7 +344,6 @@ export default function JobDetails() {
         method: 'DELETE',
       });
       if (res.ok) {
-        // Navigate back to jobs with a flag so list page can show a toast/alert if desired
         navigate('/jobs', { state: { deleted: true, title: job.title } });
       } else {
         const text = await res.text();
@@ -287,6 +357,7 @@ export default function JobDetails() {
     }
   };
 
+
   if (loading) {
     return (
       <Container size="lg" py="xl">
@@ -296,6 +367,7 @@ export default function JobDetails() {
       </Container>
     );
   }
+
 
   if (error || !job) {
     return (
@@ -308,9 +380,10 @@ export default function JobDetails() {
     );
   }
 
+
   return (
     <Container size="lg" py="xl">
-      {/* Delete confirmation modal */}
+      {/* Delete Job Confirmation Modal */}
       <Modal
         opened={deleteOpen}
         onClose={() => setDeleteOpen(false)}
@@ -319,70 +392,129 @@ export default function JobDetails() {
       >
         <Stack gap="sm">
           <Text>
-            This action will permanently delete the job “{job.title}”. Are you sure you want to continue?
+            This action will permanently delete the job "{job.title}". Are you sure?
           </Text>
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setDeleteOpen(false)}>
               Cancel
             </Button>
-            <Button color="red" loading={deleting} onClick={handleConfirmDelete} leftSection={<IconTrash size={16} />}>
+            <Button color="red" loading={deleting} onClick={handleConfirmDelete}>
               Delete
             </Button>
           </Group>
         </Stack>
       </Modal>
 
+
+      {/* Remove Video Question Confirmation Dialog */}
+      <Dialog
+        opened={removeDialogOpen}
+        withCloseButton
+        onClose={() => {
+          setRemoveDialogOpen(false);
+          setRemovingMappingId(null);
+        }}
+        size="lg"
+        radius="md"
+      >
+        <Stack gap="md">
+          <Text size="lg" fw={500}>Confirm Removal</Text>
+          <Text>
+            Are you sure you want to remove this video question from this job? 
+            This action cannot be undone.
+          </Text>
+          <Group justify="flex-end">
+            <Button 
+              variant="default" 
+              onClick={() => {
+                setRemoveDialogOpen(false);
+                setRemovingMappingId(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              color="red" 
+              loading={removingQuestion} 
+              onClick={handleConfirmRemoveQuestion}
+              leftSection={<IconX size={16} />}
+            >
+              Remove Question
+            </Button>
+          </Group>
+        </Stack>
+      </Dialog>
+
+
       {/* Video Questions Assignment Modal */}
       <Modal
         opened={videoQuestionsModalOpen}
         onClose={() => setVideoQuestionsModalOpen(false)}
-        title="Assign Video Interview Questions"
+        title="Add Video Interview Questions"
         size="lg"
         centered
       >
         <Stack gap="md">
-          <Text size="sm" c="dimmed">
-            Select the video questions that candidates should answer for this position.
-          </Text>
+          <Alert color="blue" icon={<IconAlertCircle size={16} />}>
+            Only showing questions that are <strong>not yet assigned</strong> to this job.
+            Currently assigned: <strong>{assignedVideoQuestions.length}</strong> question(s)
+          </Alert>
 
           {loadingVideoQuestions ? (
             <Group justify="center" p="xl">
               <Loader size="md" />
             </Group>
+          ) : allVideoQuestions.length === 0 ? (
+            <Alert color="yellow" title="No Available Questions">
+              {assignedVideoQuestions.length > 0 
+                ? 'All available questions are already assigned to this job.'
+                : 'No video interview questions found. Please create some questions first.'
+              }
+            </Alert>
           ) : (
-            <MultiSelect
-              label="Select Video Questions"
-              placeholder="Choose questions from the library"
-              data={(allVideoQuestions || []).map((q) => ({
-                value: q.id?.toString(),
-                label: `${q.question_text} (${q.duration_seconds}s)`,
-              }))}
-              value={selectedQuestionIds}
-              onChange={setSelectedQuestionIds}
-              searchable
-              clearable
-              maxDropdownHeight={300}
-            />
+            <>
+              <MultiSelect
+                label="Select Questions to Add"
+                placeholder="Choose questions from available library"
+                data={allVideoQuestions.map((q) => ({
+                  value: q.id?.toString(),
+                  label: `${q.question_text} (${q.duration_seconds}s)`,
+                }))}
+                value={selectedQuestionIds}
+                onChange={setSelectedQuestionIds}
+                searchable
+                clearable
+                maxDropdownHeight={300}
+              />
+              
+              <Text size="sm" c="dimmed">
+                Selected: <strong>{selectedQuestionIds.length}</strong> question(s) to add
+              </Text>
+            </>
           )}
 
-          <Alert color="blue" title="Info">
-            Currently assigned: {assignedVideoQuestions.length} question(s)
-          </Alert>
-
           <Group justify="flex-end" mt="md">
-            <Button variant="default" onClick={() => setVideoQuestionsModalOpen(false)}>
+            <Button 
+              variant="default" 
+              onClick={() => {
+                setVideoQuestionsModalOpen(false);
+                setSelectedQuestionIds([]);
+              }}
+            >
               Cancel
             </Button>
             <Button
               onClick={handleAssignVideoQuestions}
               loading={assigningQuestions}
               leftSection={<IconPlus size={16} />}
+              disabled={selectedQuestionIds.length === 0}
             >
-              Assign Selected Questions
+              Add Selected Questions
             </Button>
           </Group>
         </Stack>
       </Modal>
+
 
       <Paper shadow="sm" p="xl" radius="md" withBorder>
         <Stack gap="lg">
@@ -393,7 +525,7 @@ export default function JobDetails() {
                 <Title order={2}>{job.title}</Title>
                 {job.department && (
                   <Text size="lg" c="dimmed" fw={500} mt="xs">
-                    {job.department}
+                    Department: {job.department}
                   </Text>
                 )}
               </div>
@@ -408,7 +540,7 @@ export default function JobDetails() {
             </Group>
           </div>
 
-          {/* KEY INFO */}
+          {/* KEY INFO GRID */}
           <Grid>
             <Grid.Col span={6}>
               <Group gap="xs">
@@ -434,61 +566,94 @@ export default function JobDetails() {
                 <Text>{job.num_openings || 1} Opening(s)</Text>
               </Group>
             </Grid.Col>
+            {job.experience_level && (
+              <Grid.Col span={6}>
+                <Group gap="xs">
+                  <Text fw={500}>Experience Level:</Text>
+                  <Badge color="orange">{job.experience_level}</Badge>
+                </Group>
+              </Grid.Col>
+            )}
+            {job.reporting_to && (
+              <Grid.Col span={6}>
+                <Group gap="xs">
+                  <Text fw={500}>Reports To:</Text>
+                  <Text>{job.reporting_to}</Text>
+                </Group>
+              </Grid.Col>
+            )}
           </Grid>
 
           <Divider />
 
-          {/* HR ONLY: Assigned Video Questions Section */}
+          {/* HR ONLY: VIDEO QUESTIONS SECTION */}
           {userRole === 'hr' && (
             <>
-              <Paper p="md" withBorder radius="md">
+              <Paper p="md" withBorder radius="md" style={{ backgroundColor: '#f0f9ff' }}>
                 <Stack gap="md">
                   <Group justify="space-between">
                     <Group gap="xs">
-                      <IconVideo size={20} />
+                      <IconVideo size={20} color="#0066cc" />
                       <Text fw={600} size="lg">Video Interview Questions</Text>
                       <Badge size="sm" color="blue">
                         {assignedVideoQuestions.length} Assigned
                       </Badge>
                     </Group>
-                    <Button
-                      leftSection={<IconPlus size={16} />}
-                      onClick={handleOpenVideoQuestionsModal}
-                      size="sm"
-                    >
-                      Manage Questions
-                    </Button>
+                    <Group>
+                      <Tooltip label="Refresh questions">
+                        <ActionIcon 
+                          variant="light" 
+                          onClick={fetchAssignedVideoQuestions}
+                        >
+                          <IconReload size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                      <Button
+                        leftSection={<IconPlus size={16} />}
+                        onClick={handleOpenVideoQuestionsModal}
+                        size="sm"
+                      >
+                        Add Questions
+                      </Button>
+                    </Group>
                   </Group>
 
                   {assignedVideoQuestions.length > 0 ? (
-                    <Table striped highlightOnHover withRowBorders={false}>
+                    <Table striped highlightOnHover>
                       <Table.Thead>
                         <Table.Tr>
-                          <Table.Th style={{ width: 60 }}>#</Table.Th>
+                          <Table.Th style={{ width: 60 }}>Order</Table.Th>
                           <Table.Th>Question</Table.Th>
-                          <Table.Th style={{ width: 130 }}>Duration</Table.Th>
-                          <Table.Th style={{ width: 90 }}>Actions</Table.Th>
+                          <Table.Th style={{ width: 100 }}>Duration</Table.Th>
+                          <Table.Th style={{ width: 80 }}>Remove</Table.Th>
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
                         {assignedVideoQuestions.map((q, index) => (
-                          <Table.Tr key={q.id ?? `${q.video_question_id}-${index}`}>
-                            <Table.Td>{index + 1}</Table.Td>
-                            <Table.Td>{q.question_text}</Table.Td>
+                          <Table.Tr key={q.id}>
                             <Table.Td>
-                              <Badge size="sm" variant="light">
+                              <Badge size="sm" variant="filled" color="gray">
+                                {index + 1}
+                              </Badge>
+                            </Table.Td>
+                            <Table.Td>
+                              <Text size="sm">{q.question_text}</Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Badge size="sm" variant="light" color="cyan">
                                 {q.duration_seconds}s
                               </Badge>
                             </Table.Td>
                             <Table.Td>
-                              <ActionIcon
-                                color="red"
-                                variant="subtle"
-                                onClick={() => handleRemoveVideoQuestion(q.id ?? q.video_question_id)}
-                                aria-label="Remove question"
-                              >
-                                <IconX size={16} />
-                              </ActionIcon>
+                              <Tooltip label="Remove from job">
+                                <ActionIcon
+                                  color="red"
+                                  variant="subtle"
+                                  onClick={() => handleRemoveVideoQuestion(q.id, q.question_text)}
+                                >
+                                  <IconX size={16} />
+                                </ActionIcon>
+                              </Tooltip>
                             </Table.Td>
                           </Table.Tr>
                         ))}
@@ -496,7 +661,7 @@ export default function JobDetails() {
                     </Table>
                   ) : (
                     <Alert color="yellow" title="No Questions Assigned">
-                      No video interview questions have been assigned to this job yet. Click “Manage Questions” to assign questions from the library.
+                      No video questions assigned yet. Click "Add Questions" to assign some.
                     </Alert>
                   )}
                 </Stack>
@@ -505,7 +670,7 @@ export default function JobDetails() {
             </>
           )}
 
-          {/* MAIN CONTENT GRID */}
+          {/* MAIN CONTENT - LEFT SIDE */}
           <Grid>
             <Grid.Col span={{ base: 12, md: 8 }}>
               <Stack gap="lg">
@@ -535,7 +700,6 @@ export default function JobDetails() {
 
                 {/* REQUIREMENTS ACCORDION */}
                 <Accordion>
-                  {/* REQUIRED SKILLS */}
                   {job.required_skills && job.required_skills.length > 0 && (
                     <Accordion.Item value="required_skills">
                       <Accordion.Control>
@@ -556,7 +720,6 @@ export default function JobDetails() {
                     </Accordion.Item>
                   )}
 
-                  {/* PREFERRED SKILLS */}
                   {job.preferred_skills && job.preferred_skills.length > 0 && (
                     <Accordion.Item value="preferred_skills">
                       <Accordion.Control>
@@ -577,7 +740,6 @@ export default function JobDetails() {
                     </Accordion.Item>
                   )}
 
-                  {/* EDUCATION REQUIREMENT */}
                   {job.education_requirement && (
                     <Accordion.Item value="education">
                       <Accordion.Control>
@@ -600,11 +762,10 @@ export default function JobDetails() {
                     </Accordion.Item>
                   )}
 
-                  {/* CERTIFICATIONS */}
                   {job.required_certifications && job.required_certifications.length > 0 && (
                     <Accordion.Item value="certifications">
                       <Accordion.Control>
-                        <Text fw={600}>Certifications</Text>
+                        <Text fw={600}>Required Certifications ({job.required_certifications.length})</Text>
                       </Accordion.Control>
                       <Accordion.Panel>
                         <Group gap="xs">
@@ -618,11 +779,10 @@ export default function JobDetails() {
                     </Accordion.Item>
                   )}
 
-                  {/* TOOLS & TECHNOLOGIES */}
                   {job.tools_technologies && job.tools_technologies.length > 0 && (
                     <Accordion.Item value="tools">
                       <Accordion.Control>
-                        <Text fw={600}>Tools & Technologies</Text>
+                        <Text fw={600}>Tools & Technologies ({job.tools_technologies.length})</Text>
                       </Accordion.Control>
                       <Accordion.Panel>
                         <Group gap="xs">
@@ -636,11 +796,10 @@ export default function JobDetails() {
                     </Accordion.Item>
                   )}
 
-                  {/* KEYWORDS */}
                   {job.keywords && job.keywords.length > 0 && (
                     <Accordion.Item value="keywords">
                       <Accordion.Control>
-                        <Text fw={600}>Keywords</Text>
+                        <Text fw={600}>Keywords ({job.keywords.length})</Text>
                       </Accordion.Control>
                       <Accordion.Panel>
                         <Group gap="xs">
@@ -654,28 +813,10 @@ export default function JobDetails() {
                     </Accordion.Item>
                   )}
                 </Accordion>
-
-                {/* EXPERIENCE LEVEL */}
-                {job.experience_level && (
-                  <div>
-                    <Title order={4} mb="sm">Experience Level</Title>
-                    <Badge size="lg" color="orange" variant="light">
-                      {job.experience_level}
-                    </Badge>
-                  </div>
-                )}
-
-                {/* REPORTING TO */}
-                {job.reporting_to && (
-                  <Group gap="sm">
-                    <Text fw={500}>Reporting To:</Text>
-                    <Text>{job.reporting_to}</Text>
-                  </Group>
-                )}
               </Stack>
             </Grid.Col>
 
-            {/* SIDEBAR */}
+            {/* SIDEBAR - RIGHT SIDE */}
             <Grid.Col span={{ base: 12, md: 4 }}>
               <Stack gap="lg">
                 {/* COMPENSATION */}
@@ -701,7 +842,7 @@ export default function JobDetails() {
                 {job.job_code && (
                   <Paper p="md" radius="md" withBorder>
                     <Text c="dimmed" size="sm">Job Code</Text>
-                    <Text fw={600}>{job.job_code}</Text>
+                    <Text fw={600} size="lg">{job.job_code}</Text>
                   </Paper>
                 )}
 
@@ -713,20 +854,50 @@ export default function JobDetails() {
                   </Paper>
                 )}
 
-                {/* APPLICATION INFO */}
+                {/* JOB TYPE */}
+                <Paper p="md" radius="md" withBorder>
+                  <Text c="dimmed" size="sm">Job Type</Text>
+                  <Badge size="lg" color="blue" style={{ marginTop: '8px' }}>
+                    {job.type?.toUpperCase()}
+                  </Badge>
+                </Paper>
+
+                {/* OPENINGS */}
+                <Paper p="md" radius="md" withBorder>
+                  <Text c="dimmed" size="sm">Number of Openings</Text>
+                  <Text fw={600} size="lg">{job.num_openings || 1}</Text>
+                </Paper>
+
+                {/* APPLICATION DATES */}
                 <Paper p="md" radius="md" withBorder>
                   <Stack gap="xs">
                     <Group gap="sm">
                       <Text c="dimmed" size="sm">Posted:</Text>
-                      <Text size="sm">{job.posted_at ? new Date(job.posted_at).toLocaleDateString() : '-'}</Text>
+                      <Text size="sm">
+                        {job.posted_at ? new Date(job.posted_at).toLocaleDateString() : '-'}
+                      </Text>
                     </Group>
                     {job.application_deadline && (
                       <Group gap="sm">
                         <Text c="dimmed" size="sm">Deadline:</Text>
-                        <Text size="sm">{new Date(job.application_deadline).toLocaleDateString()}</Text>
+                        <Text size="sm">
+                          {new Date(job.application_deadline).toLocaleDateString()}
+                        </Text>
                       </Group>
                     )}
                   </Stack>
+                </Paper>
+
+                {/* STATUS */}
+                <Paper p="md" radius="md" withBorder>
+                  <Text c="dimmed" size="sm">Status</Text>
+                  <Badge 
+                    size="lg" 
+                    color={getStatusColor(job.status)}
+                    style={{ marginTop: '8px' }}
+                  >
+                    {job.status?.toUpperCase()}
+                  </Badge>
                 </Paper>
               </Stack>
             </Grid.Col>
@@ -769,7 +940,6 @@ export default function JobDetails() {
               </Group>
             )}
 
-            {/* Public applications - anyone can apply (no login required) */}
             {job.status === 'open' && (
               <Button
                 size="lg"
@@ -791,7 +961,7 @@ export default function JobDetails() {
             )}
           </Group>
 
-          {/* INFO MESSAGE FOR PUBLIC APPLICATIONS */}
+          {/* INFO MESSAGE */}
           <Alert color="blue" title="Public Application">
             This is an open position. You can apply without creating an account.
             Just fill in your details on the application form.

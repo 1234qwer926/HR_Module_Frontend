@@ -234,7 +234,7 @@ export default function HRDashboard() {
             </Button>
             <Button 
               variant="light" 
-              onClick={() => navigate('/video/questions')}
+              onClick={() => navigate('/hr-video-exam/questions-management')}
             >
               Manage Video Questions
             </Button>
