@@ -57,6 +57,9 @@ const CATExam = () => {
   const modelRetryCountRef = useRef(0);
   const tfBackendReadyRef = useRef(false);
   const timerIntervalRef = useRef(null);
+  
+  // NEW: Track if video is properly connected
+  const videoConnectedRef = useRef(false);
 
   // ============================================================
   // INITIALIZE TENSORFLOW BACKEND
@@ -122,6 +125,7 @@ const CATExam = () => {
     setIsFaceMonitoring(false);
     setCameraActive(false);
     setScreenSharingActive(false);
+    videoConnectedRef.current = false;
     debugLog('CLEANUP_COMPLETE', 'All resources cleaned up successfully');
   };
 
@@ -163,7 +167,7 @@ const CATExam = () => {
     debugLog('TIME_UP', '40 minutes elapsed. Auto-submitting exam.');
     showWarning('Time is up! Submitting your exam...');
     if (sessionData) {
-        completeExam(sessionData.session_id);
+      completeExam(sessionData.session_id);
     }
   };
 
@@ -224,34 +228,177 @@ const CATExam = () => {
   }, [location.state, navigate]);
 
   // ============================================================
-  // ATTACH STREAM TO VIDEO ELEMENT
+  // ATTACH STREAM TO VIDEO ELEMENT - FIXED VERSION
   // ============================================================
   useEffect(() => {
-    if (!cameraStream) return;
+    if (!cameraStream || !videoRef.current) {
+      console.log('[VIDEO] Cannot attach - missing:', { 
+        hasCameraStream: !!cameraStream, 
+        hasVideoRef: !!videoRef.current 
+      });
+      return;
+    }
 
     const attachStream = async () => {
-      let attempts = 0;
-      while (!videoRef.current && attempts < 20) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        attempts++;
-      }
-
-      if (!videoRef.current) return;
-
       try {
-        videoRef.current.srcObject = cameraStream;
-        await videoRef.current.play();
+        console.log('[VIDEO] Starting attachment process');
+        console.log('[VIDEO] Current video state:', {
+          readyState: videoRef.current?.readyState,
+          paused: videoRef.current?.paused,
+          srcObject: !!videoRef.current?.srcObject,
+          videoConnected: videoConnectedRef.current
+        });
+        
+        // Check stream health
+        const videoTrack = cameraStream.getVideoTracks()[0];
+        console.log('[VIDEO] Stream track status:', {
+          enabled: videoTrack?.enabled,
+          readyState: videoTrack?.readyState,
+          muted: videoTrack?.muted
+        });
 
+        // Force fresh attachment
+        if (videoRef.current.srcObject !== cameraStream) {
+          console.log('[VIDEO] Attaching fresh stream');
+          videoRef.current.srcObject = cameraStream;
+        } else {
+          console.log('[VIDEO] Stream already attached, re-validating');
+        }
+        
+        // Wait for video to be ready
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Video load timeout')), 5000);
+          
+          if (videoRef.current.readyState >= 2) {
+            clearTimeout(timeout);
+            resolve();
+          } else {
+            videoRef.current.onloadedmetadata = () => {
+              clearTimeout(timeout);
+              resolve();
+            };
+          }
+        });
+
+        console.log('[VIDEO] Metadata loaded, attempting play');
+        await videoRef.current.play();
+        videoConnectedRef.current = true;
+        
+        console.log('[VIDEO] ✓ Stream attached and playing successfully', {
+          videoWidth: videoRef.current.videoWidth,
+          videoHeight: videoRef.current.videoHeight,
+          readyState: videoRef.current.readyState
+        });
+
+        // Start face monitoring if all conditions are met and not already monitoring
         if (examStarted && modelsLoaded && tfBackendReadyRef.current && !isFaceMonitoring) {
-          setTimeout(() => startFaceMonitoring(), 1500);
+          console.log('[VIDEO] Conditions met for face monitoring, starting in 2 seconds...');
+          setTimeout(() => {
+            if (!isFaceMonitoring) {
+              console.log('[VIDEO] Triggering face monitoring start');
+              startFaceMonitoring();
+            }
+          }, 2000);
         }
       } catch (err) {
-        debugLog('ERROR_ATTACHING_STREAM', { message: err.message });
+        console.error('[VIDEO] ✗ Attachment failed:', err.message);
+        videoConnectedRef.current = false;
       }
     };
 
     attachStream();
-  }, [cameraStream, examStarted, modelsLoaded, isFaceMonitoring]);
+  }, [cameraStream]);
+
+  // ============================================================
+  // TRIGGER FACE MONITORING WHEN CONDITIONS ARE MET
+  // ============================================================
+  useEffect(() => {
+    if (examStarted && modelsLoaded && tfBackendReadyRef.current && videoConnectedRef.current && !isFaceMonitoring) {
+      console.log('[FACE-TRIGGER] All conditions met, starting face monitoring in 2 seconds...', {
+        examStarted,
+        modelsLoaded,
+        tfReady: tfBackendReadyRef.current,
+        videoConnected: videoConnectedRef.current,
+        alreadyMonitoring: isFaceMonitoring
+      });
+      
+      const timer = setTimeout(() => {
+        if (!isFaceMonitoring) {
+          console.log('[FACE-TRIGGER] Executing face monitoring start');
+          startFaceMonitoring();
+        }
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [examStarted, modelsLoaded, videoConnectedRef.current, isFaceMonitoring]);
+  useEffect(() => {
+    if (!examStarted || !cameraStream || !videoRef.current) return;
+
+    console.log('[VIDEO-MONITOR] Starting video health monitor');
+
+    const checkVideoConnection = () => {
+      if (!videoRef.current) return;
+
+      const video = videoRef.current;
+      const stream = video.srcObject;
+      
+      console.log('[VIDEO-MONITOR] Health check:', {
+        paused: video.paused,
+        readyState: video.readyState,
+        hasStream: !!stream,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        currentTime: video.currentTime
+      });
+
+      // Check if video is paused
+      if (video.paused) {
+        console.warn('[VIDEO-MONITOR] Video paused, attempting resume');
+        video.play().catch(err => {
+          console.error('[VIDEO-MONITOR] Resume failed:', err.message);
+        });
+      }
+
+      // Check if stream is detached
+      if (!stream || stream !== cameraStream) {
+        console.warn('[VIDEO-MONITOR] Stream detached, re-attaching');
+        video.srcObject = cameraStream;
+        video.play().catch(err => {
+          console.error('[VIDEO-MONITOR] Re-attach play failed:', err.message);
+        });
+      }
+
+      // Check if video dimensions are zero (black screen indicator)
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        console.error('[VIDEO-MONITOR] Zero dimensions detected - video not rendering!');
+        
+        // Try to recover
+        const track = cameraStream.getVideoTracks()[0];
+        console.log('[VIDEO-MONITOR] Track status:', {
+          enabled: track?.enabled,
+          readyState: track?.readyState,
+          muted: track?.muted
+        });
+
+        if (track && track.readyState === 'live') {
+          console.log('[VIDEO-MONITOR] Track is live, forcing video refresh');
+          video.load();
+          video.srcObject = cameraStream;
+          video.play().catch(err => {
+            console.error('[VIDEO-MONITOR] Refresh play failed:', err.message);
+          });
+        }
+      }
+    };
+
+    const intervalId = setInterval(checkVideoConnection, 2000);
+
+    return () => {
+      console.log('[VIDEO-MONITOR] Stopping video health monitor');
+      clearInterval(intervalId);
+    };
+  }, [examStarted, cameraStream]);
 
   // ============================================================
   // REQUEST CAMERA & SCREEN
@@ -298,63 +445,229 @@ const CATExam = () => {
   };
 
   // ============================================================
-  // FACE DETECTION MONITORING
+  // FACE DETECTION CONFIGURATION - PRODUCTION GRADE
+  // ============================================================
+  const FACE_DETECTION_CONFIG = {
+    // SNAPSHOT & DETECTION INTERVALS
+    // Industry standard: 30s-120s for snapshots, 1-2s for continuous monitoring
+    DETECTION_INTERVAL: 1000,     // 1 second = continuous real-time monitoring (recommended)
+    SNAPSHOT_INTERVAL: 30000,     // 30 seconds = periodic snapshot capture (Testlify uses 120s)
+    
+    // WARNING THRESHOLDS
+    WARNING_THRESHOLD: 5,         // 5 frames × 1s = 5 seconds without face (strict)
+    MAX_WARNINGS_BEFORE_FLAG: 3,  // Flag exam after 3 warnings (industry standard)
+    
+    // FACE DETECTION SENSITIVITY
+    DETECTION_THRESHOLD: 0.5,     // 0.5 = balanced (0.3 = more sensitive, 0.7 = less sensitive)
+    
+    // LIGHTING QUALITY THRESHOLDS
+    MIN_BRIGHTNESS: 50,           // Below = too dark
+    MAX_BRIGHTNESS: 220,          // Above = too bright/washed out
+    
+    // GAZE & HEAD POSE (Future enhancement)
+    GAZE_WARNING_THRESHOLD: 10,   // Warn after 10 seconds looking away
+    HEAD_TURN_ANGLE_MAX: 30,      // Max 30 degrees head turn before warning
+    
+    // LOGGING & REPORTING
+    LOG_INTERVAL: 30,             // Log every 30 checks = 30 seconds
+    ALERT_COOLDOWN: 10000,        // 10 seconds between duplicate alerts
+    
+    // MULTI-FACE DETECTION
+    IMMEDIATE_MULTI_FACE_ALERT: true,  // Alert immediately on multiple faces
+    
+    // AUDIO MONITORING (if implemented)
+    AUDIO_THRESHOLD_DB: -30,      // Detect unusual audio levels
+    VOICE_DETECTION_INTERVAL: 5000 // Check for voice every 5 seconds
+  };
+
+  // ============================================================
+  // PROCTORING SEVERITY LEVELS
+  // ============================================================
+  const VIOLATION_SEVERITY = {
+    LOW: {
+      name: 'Low Risk',
+      color: 'yellow',
+      actions: ['Log event', 'Continue monitoring']
+    },
+    MEDIUM: {
+      name: 'Medium Risk', 
+      color: 'orange',
+      actions: ['Show warning', 'Increment counter', 'Flag for review']
+    },
+    HIGH: {
+      name: 'High Risk',
+      color: 'red',
+      actions: ['Immediate alert', 'Capture snapshot', 'Consider termination']
+    },
+    CRITICAL: {
+      name: 'Critical Violation',
+      color: 'dark-red',
+      actions: ['Auto-terminate exam', 'Notify administrator', 'Save evidence']
+    }
+  };
+
+  // ============================================================
+  // VIOLATION TYPES & SEVERITY MAPPING
+  // ============================================================
+  const VIOLATION_TYPES = {
+    NO_FACE: { severity: 'MEDIUM', description: 'Face not visible' },
+    MULTIPLE_FACES: { severity: 'HIGH', description: 'Multiple people detected' },
+    POOR_LIGHTING: { severity: 'LOW', description: 'Inadequate lighting' },
+    TAB_SWITCH: { severity: 'HIGH', description: 'Tab/window switched' },
+    FULLSCREEN_EXIT: { severity: 'HIGH', description: 'Exited fullscreen mode' },
+    LOOKING_AWAY: { severity: 'MEDIUM', description: 'Extended gaze away from screen' },
+    UNAUTHORIZED_DEVICE: { severity: 'CRITICAL', description: 'Phone/tablet detected' },
+    AUDIO_DETECTED: { severity: 'MEDIUM', description: 'Unusual audio activity' },
+    SCREEN_SHARING_STOPPED: { severity: 'CRITICAL', description: 'Screen sharing ended' }
+  };
+
+  // ============================================================
+  // BRIGHTNESS CHECK (LIGHTING QUALITY)
+  // ============================================================
+  const checkBrightness = async (video) => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      ctx.drawImage(video, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      let brightness = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        brightness += (data[i] + data[i + 1] + data[i + 2]) / 3;
+      }
+
+      return brightness / (data.length / 4);
+    } catch (err) {
+      return 128; // Default middle brightness
+    }
+  };
+
+  // ============================================================
+  // FACE DETECTION MONITORING - ENHANCED VERSION
   // ============================================================
   const startFaceMonitoring = async () => {
-    if (!videoRef.current || !canvasRef.current || !modelsLoaded || !tfBackendReadyRef.current || isFaceMonitoring) return;
+    if (!videoRef.current || !canvasRef.current || !modelsLoaded || !tfBackendReadyRef.current) {
+      console.error('[FACE-MONITOR] Cannot start - missing requirements:', {
+        hasVideo: !!videoRef.current,
+        hasCanvas: !!canvasRef.current,
+        modelsLoaded,
+        tfReady: tfBackendReadyRef.current
+      });
+      return;
+    }
 
+    if (isFaceMonitoring) {
+      console.log('[FACE-MONITOR] Already monitoring, skipping duplicate start');
+      return;
+    }
+
+    console.log('[FACE-MONITOR] ✓ Starting face monitoring with enhanced detection');
     setIsFaceMonitoring(true);
     let consecutiveNoFaceFrames = 0;
+    let detectionCount = 0;
 
     const detectFaces = async () => {
       try {
-        if (videoRef.current && videoRef.current.readyState === 4) {
-          const video = videoRef.current;
-          const canvas = canvasRef.current;
+        if (!videoRef.current || videoRef.current.readyState !== 4) {
+          return; // Video not ready
+        }
 
-          const detections = await faceapi.detectAllFaces(
-            video,
-            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })
-          );
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
 
-          if (canvas) {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        detectionCount++;
+
+        // Detect faces
+        const detections = await faceapi.detectAllFaces(
+          video,
+          new faceapi.TinyFaceDetectorOptions({ 
+            inputSize: 224, 
+            scoreThreshold: FACE_DETECTION_CONFIG.DETECTION_THRESHOLD 
+          })
+        );
+
+        // Check lighting quality
+        const brightness = await checkBrightness(video);
+        const lightingGood = brightness >= FACE_DETECTION_CONFIG.MIN_BRIGHTNESS && 
+                            brightness <= FACE_DETECTION_CONFIG.MAX_BRIGHTNESS;
+        setLightingQuality(lightingGood ? 'good' : 'poor');
+
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          
+          // Set canvas dimensions to match video
+          if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+          }
+
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // Handle detection results
+          if (detections.length === 0) {
+            consecutiveNoFaceFrames++;
+            setFaceDetected(false);
+            setMultipleFaces(false);
             
-            if (detections.length === 0) {
-              consecutiveNoFaceFrames++;
-              setFaceDetected(false);
-              if (consecutiveNoFaceFrames === 10) {
-                setFaceWarnings(prev => {
-                  const newWarnings = prev + 1;
-                  showWarning(`⚠️ Warning ${newWarnings}: Face not detected.`);
-                  return newWarnings;
-                });
-                consecutiveNoFaceFrames = 0;
-              }
-            } else if (detections.length > 1) {
-              setFaceDetected(true);
-              setMultipleFaces(true);
-              showWarning('⚠️ Multiple faces detected!');
-            } else {
-              setFaceDetected(true);
-              setMultipleFaces(false);
+            // Warn after threshold consecutive frames without face
+            if (consecutiveNoFaceFrames === FACE_DETECTION_CONFIG.WARNING_THRESHOLD) {
+              const warningTime = (FACE_DETECTION_CONFIG.WARNING_THRESHOLD * FACE_DETECTION_CONFIG.DETECTION_INTERVAL) / 1000;
+              setFaceWarnings(prev => {
+                const newWarnings = prev + 1;
+                showWarning(`⚠️ Warning ${newWarnings}: Face not detected for ${warningTime} seconds. Please ensure your face is visible.`);
+                return newWarnings;
+              });
               consecutiveNoFaceFrames = 0;
             }
+          } else if (detections.length > 1) {
+            setFaceDetected(true);
+            setMultipleFaces(true);
+            consecutiveNoFaceFrames = 0;
+            showWarning('⚠️ Multiple faces detected! Only the candidate should be visible.');
+          } else {
+            // Exactly 1 face detected - ideal state
+            setFaceDetected(true);
+            setMultipleFaces(false);
+            consecutiveNoFaceFrames = 0;
+          }
 
-            const resizedDetections = faceapi.resizeResults(detections, {
-              width: video.videoWidth,
-              height: video.videoHeight,
+          // Draw detection boxes on canvas
+          const resizedDetections = faceapi.resizeResults(detections, {
+            width: video.videoWidth,
+            height: video.videoHeight,
+          });
+          
+          faceapi.draw.drawDetections(canvas, resizedDetections);
+
+          // Log detection status at configured interval
+          if (detectionCount % FACE_DETECTION_CONFIG.LOG_INTERVAL === 0) {
+            console.log('[FACE-MONITOR] Detection status:', {
+              detectionNumber: detectionCount,
+              checkInterval: `${FACE_DETECTION_CONFIG.DETECTION_INTERVAL}ms`,
+              facesDetected: detections.length,
+              brightness: Math.round(brightness),
+              consecutiveNoFace: consecutiveNoFaceFrames,
+              totalWarnings: faceWarnings,
+              warningThreshold: `${(FACE_DETECTION_CONFIG.WARNING_THRESHOLD * FACE_DETECTION_CONFIG.DETECTION_INTERVAL) / 1000}s`
             });
-            faceapi.draw.drawDetections(canvas, resizedDetections);
           }
         }
       } catch (err) {
-        // SIlent catch for frame skip
+        // Silent catch for frame skip or temporary detection failures
+        if (detectionCount % 50 === 0) {
+          console.warn('[FACE-MONITOR] Detection error:', err.message);
+        }
       }
     };
 
-    detectionIntervalRef.current = setInterval(() => detectFaces(), 500);
+    // Run detection at configured interval
+    console.log(`[FACE-MONITOR] Setting up detection interval (${FACE_DETECTION_CONFIG.DETECTION_INTERVAL}ms = ${FACE_DETECTION_CONFIG.DETECTION_INTERVAL/1000}s)`);
+    console.log(`[FACE-MONITOR] Warning will trigger after ${(FACE_DETECTION_CONFIG.WARNING_THRESHOLD * FACE_DETECTION_CONFIG.DETECTION_INTERVAL) / 1000} seconds without face`);
+    detectionIntervalRef.current = setInterval(() => detectFaces(), FACE_DETECTION_CONFIG.DETECTION_INTERVAL);
   };
 
   // ============================================================
@@ -449,13 +762,28 @@ const CATExam = () => {
   // EXAM LOGIC
   // ============================================================
   const fetchNextItem = async (sessionId) => {
+    console.log('[FETCH] Loading next question');
+    console.log('[FETCH] Video state before fetch:', {
+      paused: videoRef.current?.paused,
+      readyState: videoRef.current?.readyState,
+      hasStream: !!videoRef.current?.srcObject
+    });
+
     setLoading(true);
     try {
       const response = await axios.post('http://localhost:8000/cat/next-item', { session_id: sessionId });
       setCurrentItem(response.data);
       setSelectedOption('');
       setItemStartTime(Date.now());
+      
+      console.log('[FETCH] Next question loaded');
+      console.log('[FETCH] Video state after fetch:', {
+        paused: videoRef.current?.paused,
+        readyState: videoRef.current?.readyState,
+        hasStream: !!videoRef.current?.srcObject
+      });
     } catch (err) {
+      console.error('[FETCH] Error loading question:', err);
       if (err.response?.status === 400 && err.response?.data?.detail?.includes('complete')) {
         completeExam(sessionId);
       } else {
@@ -471,6 +799,13 @@ const CATExam = () => {
   const submitAnswer = async () => {
     if (!selectedOption) return;
 
+    console.log('[SUBMIT] Answer submission started');
+    console.log('[SUBMIT] Video state before submit:', {
+      paused: videoRef.current?.paused,
+      readyState: videoRef.current?.readyState,
+      hasStream: !!videoRef.current?.srcObject
+    });
+
     setSubmitting(true);
     const responseTime = Math.floor((Date.now() - itemStartTime) / 1000);
     
@@ -484,6 +819,8 @@ const CATExam = () => {
         tab_switch_warnings: windowWarnings
       });
 
+      console.log('[SUBMIT] Answer submitted successfully');
+
       setStats({
         itemsCompleted: response.data.items_completed,
         currentTheta: response.data.current_theta
@@ -491,25 +828,31 @@ const CATExam = () => {
 
       showFeedback(response.data.is_correct);
 
+      console.log('[SUBMIT] Video state after stats update:', {
+        paused: videoRef.current?.paused,
+        readyState: videoRef.current?.readyState,
+        hasStream: !!videoRef.current?.srcObject
+      });
+
       if (response.data.should_continue) {
-        setTimeout(() => fetchNextItem(sessionData.session_id), 1500);
+        setTimeout(() => {
+          console.log('[SUBMIT] Fetching next item');
+          fetchNextItem(sessionData.session_id);
+        }, 1500);
       } else {
         setTimeout(() => completeExam(sessionData.session_id), 1500);
       }
     } catch (err) {
+      console.error('[SUBMIT] Error:', err);
       alert('Error submitting answer.');
     } finally {
       setSubmitting(false);
+      console.log('[SUBMIT] Submission process complete');
     }
   };
 
   const showFeedback = (correct) => {
     const feedback = document.getElementById('answer-feedback');
-    // if (feedback) {
-    //   feedback.className = `answer-feedback ${correct ? 'correct' : 'incorrect'} show`;
-    //   feedback.textContent = correct ? 'Correct!' : 'Incorrect';
-    //   setTimeout(() => feedback.classList.remove('show'), 1500);
-    // }
   };
 
   const endExam = () => {
@@ -583,15 +926,14 @@ const CATExam = () => {
                   <canvas ref={canvasRef} className="preview-canvas" />
                   <div className="preview-status">
                     {!cameraActive ? <span className="status-badge inactive">Not connected</span> : 
-                    //  !faceDetected ? <span className="status-badge inactive">Waiting for face...</span> : 
-                     <span className="status-badge active">Face Detected</span>}
+                     <span className="status-badge active">Camera Active</span>}
                   </div>
                 </div>
               </div>
               <div className="button-group">
                 <button className="start-exam-button secondary" onClick={() => setSetupStage('instructions')}>← Back</button>
                 <button className="start-exam-button" onClick={handleCameraSetup} disabled={!modelsLoaded}>
-                  {!cameraActive ? 'Grant Camera Access' : faceDetected ? 'Next Step' : 'Loading...'}
+                  {!cameraActive ? 'Grant Camera Access' : 'Next Step'}
                 </button>
               </div>
             </>
@@ -634,7 +976,7 @@ const CATExam = () => {
               <div className="instructions-section">
                 <h2>Final Checklist</h2>
                 <ul className="instructions-list">
-                   <li>✅ Camera is active and face is detected.</li>
+                   <li>✅ Camera is active and monitoring.</li>
                    <li>✅ Screen sharing is active and monitoring.</li>
                    <li>✅ Fullscreen mode will activate automatically.</li>
                    <li>⏱️ <strong>Time Limit:</strong> You have 40 minutes to complete 30 questions.</li>
@@ -666,38 +1008,138 @@ const CATExam = () => {
     );
   }
 
-  if (loading || !currentItem) {
-    return (
-      <div className="loading-container">
-        <div className="spinner-large"></div>
-        <p>Loading next question...</p>
-      </div>
-    );
-  }
+  // Don't unmount the entire component during loading - just show overlay
+  const showLoadingOverlay = loading || !currentItem;
 
   const optionsArray = ['A', 'B', 'C', 'D'];
-  const progressPercentage = (stats.itemsCompleted / 30) * 100; // Assuming 30 questions
-  const timerColor = timeLeft < 300 ? '#ff4444' : '#2c3e50'; // Red if < 5 mins
+  const progressPercentage = (stats.itemsCompleted / 30) * 100;
+  const timerColor = timeLeft < 300 ? '#ff4444' : '#2c3e50';
 
   return (
     <div className="cat-exam-container">
       <div id="answer-feedback" className="answer-feedback"></div>
       <div id="warning-notification" className="warning-notification"></div>
 
-      {cameraStream && (
-        <div className="camera-monitoring">
-          <video ref={videoRef} autoPlay playsInline muted className="monitoring-video" />
-          <canvas ref={canvasRef} className="monitoring-canvas" />
-          {/* {!faceDetected && <div className="video-overlay"><span>Waiting for face...</span></div>} */}
+      {/* Loading overlay - doesn't unmount video */}
+      {showLoadingOverlay && (
+        <div className="loading-container" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(44, 62, 80, 0.95)',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div className="spinner-large"></div>
+          <p style={{ color: 'white', marginTop: '20px' }}>Loading next question...</p>
         </div>
       )}
 
+      {cameraStream && (
+        <div className="camera-monitoring" style={{
+          position: 'fixed',
+          top: '80px',
+          right: '20px',
+          width: '220px',
+          height: '165px',
+          zIndex: 1000,
+          border: `3px solid ${faceDetected ? '#51cf66' : '#ff6b6b'}`,
+          borderRadius: '12px',
+          overflow: 'hidden',
+          background: '#000',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+        }}>
+          <video 
+            ref={videoRef} 
+            autoPlay 
+            playsInline 
+            muted 
+            className="monitoring-video"
+            style={{ 
+              display: 'block',
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover'
+            }}
+          />
+          <canvas 
+            ref={canvasRef} 
+            className="monitoring-canvas"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%'
+            }}
+          />
+          {/* Live indicator */}
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            left: '8px',
+            background: '#ff4757',
+            color: 'white',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '11px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontWeight: 'bold'
+          }}>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              background: 'white',
+              borderRadius: '50%',
+              animation: 'pulse 2s infinite'
+            }}></div>
+            LIVE
+          </div>
+          {/* Face status overlay */}
+          {!faceDetected && (
+            <div style={{
+              position: 'absolute',
+              bottom: '8px',
+              left: '8px',
+              right: '8px',
+              background: 'rgba(255, 71, 87, 0.9)',
+              color: 'white',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              fontSize: '10px',
+              textAlign: 'center',
+              fontWeight: 'bold'
+            }}>
+              ⚠ Face Not Visible
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add pulse animation for live indicator */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
+
       <div className="monitoring-bar">
         <div className={`monitor-indicator ${faceDetected ? 'active' : 'warning'}`}>
-          {faceDetected ? '✓ Face' : '⚠ No Face'}
+          {faceDetected ? '✓ Face Detected' : '⚠ No Face'}
         </div>
         <div className={`monitor-indicator ${multipleFaces ? 'warning' : 'active'}`}>
-          {multipleFaces ? '⚠ Multi-Face' : '✓ Single'}
+          {multipleFaces ? '⚠ Multiple Faces' : '✓ Single Person'}
+        </div>
+        <div className={`monitor-indicator ${lightingQuality === 'good' ? 'active' : 'warning'}`}>
+          {lightingQuality === 'good' ? '✓ Good Lighting' : '⚠ Poor Lighting'}
         </div>
         <div className="monitor-indicator timer" style={{ backgroundColor: timerColor, color: 'white', fontWeight: 'bold' }}>
            ⏱️ {formatTime(timeLeft)}
@@ -720,34 +1162,36 @@ const CATExam = () => {
         </div>
       </div>
 
-      <div className="exam-content">
-        <div className="question-card">
-          <div className="question-header-row">
-              <div className="question-number">Question {currentItem.item_number}</div>
-              <div className="question-timer">Time Left: {formatTime(timeLeft)}</div>
+      {currentItem && (
+        <div className="exam-content">
+          <div className="question-card">
+            <div className="question-header-row">
+                <div className="question-number">Question {currentItem.item_number}</div>
+                <div className="question-timer">Time Left: {formatTime(timeLeft)}</div>
+            </div>
+            
+            <div className="question-text">{currentItem.question}</div>
+            
+            <div className="options-container">
+              {optionsArray.map((option) => (
+                <div
+                  key={option}
+                  className={`option ${selectedOption === option ? 'selected' : ''} ${submitting ? 'disabled' : ''}`}
+                  onClick={() => !submitting && handleOptionSelect(option)}
+                >
+                  <div className="option-letter">{option}</div>
+                  <div className="option-text">{currentItem[`option_${option.toLowerCase()}`]}</div>
+                  {selectedOption === option && <div className="option-checkmark">✓</div>}
+                </div>
+              ))}
+            </div>
+            
+            <button className="submit-answer-button" onClick={submitAnswer} disabled={!selectedOption || submitting}>
+              {submitting ? 'Submitting...' : 'Submit Answer'}
+            </button>
           </div>
-          
-          <div className="question-text">{currentItem.question}</div>
-          
-          <div className="options-container">
-            {optionsArray.map((option) => (
-              <div
-                key={option}
-                className={`option ${selectedOption === option ? 'selected' : ''} ${submitting ? 'disabled' : ''}`}
-                onClick={() => !submitting && handleOptionSelect(option)}
-              >
-                <div className="option-letter">{option}</div>
-                <div className="option-text">{currentItem[`option_${option.toLowerCase()}`]}</div>
-                {selectedOption === option && <div className="option-checkmark">✓</div>}
-              </div>
-            ))}
-          </div>
-          
-          <button className="submit-answer-button" onClick={submitAnswer} disabled={!selectedOption || submitting}>
-            {submitting ? 'Submitting...' : 'Submit Answer'}
-          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 };
