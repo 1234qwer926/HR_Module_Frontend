@@ -505,11 +505,11 @@ const CATExam = () => {
 
   const showFeedback = (correct) => {
     const feedback = document.getElementById('answer-feedback');
-    if (feedback) {
-      feedback.className = `answer-feedback ${correct ? 'correct' : 'incorrect'} show`;
-      feedback.textContent = correct ? 'Correct!' : 'Incorrect';
-      setTimeout(() => feedback.classList.remove('show'), 1500);
-    }
+    // if (feedback) {
+    //   feedback.className = `answer-feedback ${correct ? 'correct' : 'incorrect'} show`;
+    //   feedback.textContent = correct ? 'Correct!' : 'Incorrect';
+    //   setTimeout(() => feedback.classList.remove('show'), 1500);
+    // }
   };
 
   const endExam = () => {
