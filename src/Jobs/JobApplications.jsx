@@ -12,6 +12,7 @@ import {
   IconUpload, IconFileSpreadsheet, IconCheck, IconX
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import api from '../utils/api';
 
 
 // Helper: Title case
@@ -93,10 +94,10 @@ export default function JobApplications() {
   const fetchJob = async () => {
     setJobLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/jobs/${id}`);
-      if (res.ok) setJob(await res.json());
+      const data = await api.get(`/jobs/${id}`);
+      setJob(data);
     } catch (e) {
-      setError('Error loading job');
+      setError(e.response?.data?.detail || 'Error loading job');
     } finally {
       setJobLoading(false);
     }
@@ -107,15 +108,10 @@ export default function JobApplications() {
   const fetchApplications = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/jobs/${id}/applications`);
-      if (res.ok) {
-        const data = await res.json();
-        setApplications(Array.isArray(data) ? data : []);
-      } else {
-        setError('Failed to load applications');
-      }
+      const data = await api.get(`/jobs/${id}/applications`);
+      setApplications(Array.isArray(data) ? data : []);
     } catch (e) {
-      setError('Network error');
+      setError(e.response?.data?.detail || 'Failed to load applications');
     } finally {
       setLoading(false);
     }
@@ -211,18 +207,8 @@ export default function JobApplications() {
         queryParams.append('custom_message', bulkMessage.trim());
       }
 
-      const url = `http://localhost:8000/applications/bulk-status-simple?${queryParams.toString()}`;
-
-      const res = await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(selectedApps),
-      });
-
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || 'Update failed');
-      }
+      const url = `/applications/bulk-status-simple?${queryParams.toString()}`;
+      await api.put(url, selectedApps);
 
       notifications.show({
         title: 'Success!',
@@ -241,7 +227,7 @@ export default function JobApplications() {
     } catch (e) {
       notifications.show({
         title: 'Update Failed',
-        message: e.message,
+        message: e.response?.data?.detail || e.message,
         color: 'red',
       });
     } finally {
@@ -270,7 +256,7 @@ export default function JobApplications() {
     try {
       const formData = new FormData();
       formData.append('file', uploadFile);
-      
+
       // Simulate progress
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => Math.min(prev + 15, 90));
@@ -367,16 +353,16 @@ export default function JobApplications() {
           Back to Jobs
         </Button>
         <Group gap="sm">
-          <Button 
-            variant="light" 
-            leftSection={<IconRefresh />} 
+          <Button
+            variant="light"
+            leftSection={<IconRefresh />}
             onClick={fetchApplications}
           >
             Refresh
           </Button>
-          <Button 
+          <Button
             color="green"
-            leftSection={<IconUpload />} 
+            leftSection={<IconUpload />}
             onClick={() => {
               setUploadModalOpened(true);
               setUploadTab('upload');
@@ -615,8 +601,8 @@ export default function JobApplications() {
             <Tabs.Tab value="upload" leftSection={<IconUpload size={14} />}>
               Upload
             </Tabs.Tab>
-            <Tabs.Tab 
-              value="results" 
+            <Tabs.Tab
+              value="results"
               leftSection={<IconCheck size={14} />}
               disabled={!uploadResults}
             >
@@ -628,9 +614,9 @@ export default function JobApplications() {
             <Stack gap="md">
               <div>
                 <Text fw={600} mb="sm">Upload Excel File</Text>
-                <Alert 
-                  icon={<IconFileSpreadsheet />} 
-                  color="blue" 
+                <Alert
+                  icon={<IconFileSpreadsheet />}
+                  color="blue"
                   title="Required Columns:"
                   mb="md"
                 >
@@ -666,8 +652,8 @@ export default function JobApplications() {
               )}
 
               <Group justify="flex-end" mt="md">
-                <Button 
-                  variant="light" 
+                <Button
+                  variant="light"
                   onClick={() => setUploadModalOpened(false)}
                   disabled={uploading}
                 >
@@ -689,7 +675,7 @@ export default function JobApplications() {
           <Tabs.Panel value="results" py="md">
             {uploadResults && (
               <Stack gap="md">
-                <Alert 
+                <Alert
                   color={uploadResults.failed === 0 ? 'green' : 'orange'}
                   icon={uploadResults.failed === 0 ? <IconCheck /> : <IconAlertCircle />}
                   title={uploadResults.failed === 0 ? 'All Successful!' : 'Completed with Errors'}
@@ -725,8 +711,8 @@ export default function JobApplications() {
                                 <Text size="sm">{app.email}</Text>
                               </Table.Td>
                               <Table.Td>
-                                <Text 
-                                  size="sm" 
+                                <Text
+                                  size="sm"
                                   fw={600}
                                   c={app.resume_score >= 70 ? 'green' : app.resume_score >= 50 ? 'orange' : 'red'}
                                 >
@@ -760,10 +746,10 @@ export default function JobApplications() {
                     </Text>
                     <Stack gap="xs">
                       {uploadResults.failed_uploads.map((fail, idx) => (
-                        <Alert 
+                        <Alert
                           key={idx}
-                          icon={<IconX size={16} />} 
-                          color="red" 
+                          icon={<IconX size={16} />}
+                          color="red"
                           title={fail.name}
                         >
                           <Text size="sm">{fail.email} - {fail.error}</Text>

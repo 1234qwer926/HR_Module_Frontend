@@ -6,6 +6,7 @@ import {
 } from '@mantine/core';
 import { IconCheck, IconAlertCircle } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import api from '../utils/api';
 
 export default function JobCreate() {
   const navigate = useNavigate();
@@ -68,8 +69,6 @@ export default function JobCreate() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-
       const payload = {
         ...formData,
         required_skills: formData.required_skills || [],
@@ -79,31 +78,19 @@ export default function JobCreate() {
         keywords: formData.keywords || []
       };
 
-      const response = await fetch('http://localhost:8000/jobs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
+      const data = await api.post('/jobs', payload);
+
+      notifications.show({
+        title: 'Success',
+        message: 'Job posted successfully!',
+        color: 'green',
+        icon: <IconCheck size={16} />
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        notifications.show({
-          title: 'Success',
-          message: 'Job posted successfully!',
-          color: 'green',
-          icon: <IconCheck size={16} />
-        });
-        setTimeout(() => navigate(`/jobs/${data.id}`), 1500);
-      } else {
-        const data = await response.json();
-        setError(data.detail || 'Failed to create job');
-      }
+      setTimeout(() => navigate(`/jobs/${data.id}`), 1500);
     } catch (err) {
-      setError('Network error. Please try again.');
-      // eslint-disable-next-line no-console
+      const errorMsg = err.response?.data?.detail || 'Failed to create job';
+      setError(errorMsg);
       console.error('Error:', err);
     } finally {
       setLoading(false);

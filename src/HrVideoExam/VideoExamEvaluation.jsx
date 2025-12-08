@@ -24,17 +24,18 @@ import {
   Modal,
   Textarea,
 } from '@mantine/core';
-import { 
-  IconAlertCircle, 
-  IconChevronDown, 
-  IconChevronRight, 
-  IconPlayerPlay, 
+import {
+  IconAlertCircle,
+  IconChevronDown,
+  IconChevronRight,
+  IconPlayerPlay,
   IconVideo,
   IconMailForward,
   IconSortAscending,
   IconSortDescending,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import api from '../utils/api';
 
 // Helper: Title case
 const toTitleCase = (str) => {
@@ -61,7 +62,7 @@ const calculatePercentile = (score, allScores) => {
   if (score === null || score === undefined || allScores.length === 0) return null;
   const validScores = allScores.filter(s => s !== null && s !== undefined);
   if (validScores.length === 0) return null;
-  
+
   const belowCount = validScores.filter(s => s < score).length;
   const percentile = (belowCount / validScores.length) * 100;
   return percentile.toFixed(1);
@@ -134,25 +135,15 @@ export default function VideoExamEvaluation() {
     }
 
     setLoadingVideoUrl(responseId);
-    
+
     try {
-      const res = await fetch(`http://localhost:8000/s3/get-url?key=${encodeURIComponent(videoPath)}`);
-      
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) {
-          window.open(data.url, '_blank');
-        } else {
-          notifications.show({
-            title: 'Error',
-            message: 'Could not get video URL',
-            color: 'red',
-          });
-        }
+      const data = await api.get(`/s3/get-url?key=${encodeURIComponent(videoPath)}`);
+      if (data.url) {
+        window.open(data.url, '_blank');
       } else {
         notifications.show({
           title: 'Error',
-          message: 'Failed to get video URL',
+          message: 'Could not get video URL',
           color: 'red',
         });
       }
@@ -160,7 +151,7 @@ export default function VideoExamEvaluation() {
       console.error('Error getting video URL:', e);
       notifications.show({
         title: 'Error',
-        message: 'Network error while getting video URL',
+        message: e.response?.data?.detail || 'Network error while getting video URL',
         color: 'red',
       });
     } finally {
@@ -226,12 +217,8 @@ export default function VideoExamEvaluation() {
   // --------------------------------------------------
   const fetchVideoResponses = async (applicationId) => {
     try {
-      const res = await fetch(`http://localhost:8000/applications/${applicationId}/video-responses`);
-      if (res.ok) {
-        const data = await res.json();
-        return Array.isArray(data) ? data : [];
-      }
-      return [];
+      const data = await api.get(`/applications/${applicationId}/video-responses`);
+      return Array.isArray(data) ? data : [];
     } catch (e) {
       console.error(`Error fetching video responses for app ${applicationId}:`, e);
       return [];
@@ -247,43 +234,37 @@ export default function VideoExamEvaluation() {
     setEditedResponses({});
     setSelectedApps([]);
     setSelectAll(false);
-    
+
     try {
-      const res = await fetch(`http://localhost:8000/jobs/${id}/applications`);
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : [];
+      const data = await api.get(`/jobs/${id}/applications`);
+      const list = Array.isArray(data) ? data : [];
 
-        console.log('📋 Total applications from API:', list.length);
+      console.log('📋 Total applications from API:', list.length);
 
-        // Filter to both VIDEO HR and FINAL INTERVIEW stages
-        const filtered = list.filter((app) => {
-          const stage = (
-            app.currentstage || 
-            app.current_stage || 
-            app.currentStage || 
-            ''
-          ).toLowerCase().trim();
-          return stage === 'video hr' || stage === 'final interview' || stage === 'final_interview';
-        });
+      // Filter to both VIDEO HR and FINAL INTERVIEW stages
+      const filtered = list.filter((app) => {
+        const stage = (
+          app.currentstage ||
+          app.current_stage ||
+          app.currentStage ||
+          ''
+        ).toLowerCase().trim();
+        return stage === 'video hr' || stage === 'final interview' || stage === 'final_interview';
+      });
 
-        console.log('🎥 VIDEO HR + FINAL INTERVIEW candidates:', filtered.length);
-        setApplications(filtered);
+      console.log('🎥 VIDEO HR + FINAL INTERVIEW candidates:', filtered.length);
+      setApplications(filtered);
 
-        const responsesMap = {};
-        for (const app of filtered) {
-          const responses = await fetchVideoResponses(app.id);
-          responsesMap[app.id] = responses;
-          console.log(`📹 App ${app.id} has ${responses.length} video responses`);
-        }
-        setVideoResponses(responsesMap);
-
-      } else {
-        setError('Failed to load applications');
+      const responsesMap = {};
+      for (const app of filtered) {
+        const responses = await fetchVideoResponses(app.id);
+        responsesMap[app.id] = responses;
+        console.log(`📹 App ${app.id} has ${responses.length} video responses`);
       }
+      setVideoResponses(responsesMap);
     } catch (e) {
       console.error('Network error:', e);
-      setError('Network error while loading applications');
+      setError(e.response?.data?.detail || 'Network error while loading applications');
     } finally {
       setLoading(false);
     }
@@ -299,16 +280,16 @@ export default function VideoExamEvaluation() {
   const processedApps = useMemo(() => {
     // Apply stage filter
     let filtered = [...applications];
-    
+
     if (stageFilter !== 'both') {
       filtered = filtered.filter((app) => {
         const stage = (
-          app.currentstage || 
-          app.current_stage || 
-          app.currentStage || 
+          app.currentstage ||
+          app.current_stage ||
+          app.currentStage ||
           ''
         ).toLowerCase().trim();
-        
+
         if (stageFilter === 'video hr') {
           return stage === 'video hr';
         } else if (stageFilter === 'final interview') {
@@ -323,7 +304,7 @@ export default function VideoExamEvaluation() {
       const videoScore = calculateVideoExamScore(app.id);
       const finalScore = calculateFinalScore(app, videoScore);
       const catTheta = app.cattheta ?? app.cat_theta ?? app.catTheta ?? null;
-      
+
       return {
         ...app,
         videoExamScore: videoScore,
@@ -439,18 +420,8 @@ export default function VideoExamEvaluation() {
         queryParams.append('custom_message', bulkMessage.trim());
       }
 
-      const url = `http://localhost:8000/applications/bulk-status-simple?${queryParams.toString()}`;
-
-      const res = await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(selectedApps),
-      });
-
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || 'Update failed');
-      }
+      const url = `/applications/bulk-status-simple?${queryParams.toString()}`;
+      await api.put(url, selectedApps);
 
       notifications.show({
         title: 'Success!',
@@ -469,7 +440,7 @@ export default function VideoExamEvaluation() {
     } catch (e) {
       notifications.show({
         title: 'Update Failed',
-        message: e.message,
+        message: e.response?.data?.detail || e.message,
         color: 'red',
       });
     } finally {
@@ -489,7 +460,7 @@ export default function VideoExamEvaluation() {
     if (value !== '' && value !== null) {
       score = Math.max(0, Math.min(10, parseFloat(value) || 0));
     }
-    
+
     setEditedResponses((prev) => ({
       ...prev,
       [responseId]: {
@@ -511,12 +482,12 @@ export default function VideoExamEvaluation() {
 
   const handleUpdateAllScores = async (appId) => {
     const responses = videoResponses[appId] || [];
-    
+
     const updates = [];
-    
+
     responses.forEach((resp) => {
       const edited = editedResponses[resp.id];
-      
+
       if (edited && (edited.hr_score !== undefined && edited.hr_score !== '' && edited.hr_score !== null)) {
         updates.push({
           response_id: resp.id,
@@ -540,48 +511,32 @@ export default function VideoExamEvaluation() {
 
     setUpdatingScores(true);
     try {
-      const res = await fetch('http://localhost:8000/video-responses/bulk-update-scores', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
+      const result = await api.put('/video-responses/bulk-update-scores', updates);
+      console.log('✅ Bulk update result:', result);
+
+      notifications.show({
+        title: 'Success',
+        message: `Updated ${result.successfully_updated} video response(s)`,
+        color: 'green',
       });
 
-      if (res.ok) {
-        const result = await res.json();
-        console.log('✅ Bulk update result:', result);
+      const updatedResponses = await fetchVideoResponses(appId);
+      setVideoResponses((prev) => ({
+        ...prev,
+        [appId]: updatedResponses,
+      }));
 
-        notifications.show({
-          title: 'Success',
-          message: `Updated ${result.successfully_updated} video response(s)`,
-          color: 'green',
-        });
-
-        const updatedResponses = await fetchVideoResponses(appId);
-        setVideoResponses((prev) => ({
-          ...prev,
-          [appId]: updatedResponses,
-        }));
-
-        const responseIds = responses.map((r) => r.id);
-        setEditedResponses((prev) => {
-          const newState = { ...prev };
-          responseIds.forEach((id) => delete newState[id]);
-          return newState;
-        });
-
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        notifications.show({
-          title: 'Error',
-          message: errData.detail || 'Failed to update scores',
-          color: 'red',
-        });
-      }
+      const responseIds = responses.map((r) => r.id);
+      setEditedResponses((prev) => {
+        const newState = { ...prev };
+        responseIds.forEach((id) => delete newState[id]);
+        return newState;
+      });
     } catch (e) {
       console.error('Error updating scores:', e);
       notifications.show({
         title: 'Error',
-        message: 'Network error while updating scores',
+        message: e.response?.data?.detail || 'Network error while updating scores',
         color: 'red',
       });
     } finally {
@@ -610,15 +565,15 @@ export default function VideoExamEvaluation() {
   // Render sortable header
   // --------------------------------------------------
   const renderSortableHeader = (label, field) => (
-    <Table.Th 
-      onClick={() => toggleSort(field)} 
+    <Table.Th
+      onClick={() => toggleSort(field)}
       style={{ cursor: 'pointer', userSelect: 'none' }}
     >
       <Group gap={4} wrap="nowrap">
         {label}
         {sortBy === field && (
-          sortOrder === 'desc' 
-            ? <IconSortDescending size={14} /> 
+          sortOrder === 'desc'
+            ? <IconSortDescending size={14} />
             : <IconSortAscending size={14} />
         )}
       </Group>
@@ -699,7 +654,7 @@ export default function VideoExamEvaluation() {
                     </Text>
                   </Table.Td>
                   <Table.Td>
-                    <Badge 
+                    <Badge
                       color={getScoreBadgeColor(resp.ai_score)}
                       variant="filled"
                     >
@@ -746,7 +701,7 @@ export default function VideoExamEvaluation() {
         </Table>
 
         <Group justify="flex-end">
-          <Button 
+          <Button
             color="blue"
             loading={updatingScores}
             onClick={() => handleUpdateAllScores(appId)}
@@ -771,7 +726,7 @@ export default function VideoExamEvaluation() {
 
     return (
       <React.Fragment key={app.id}>
-        <Table.Tr 
+        <Table.Tr
           style={{ cursor: 'pointer', backgroundColor: isSelected ? '#e7f5ff' : undefined }}
         >
           <Table.Td onClick={(e) => e.stopPropagation()}>
@@ -1009,7 +964,7 @@ export default function VideoExamEvaluation() {
             checked={bulkSendEmail}
             onChange={(e) => setBulkSendEmail(e.currentTarget.checked)}
           />
-          
+
           {bulkStage === 'aptitude' && bulkSendEmail && (
             <Alert color="blue" title="Auto Exam Key">
               Unique 8-character keys will be generated and emailed.

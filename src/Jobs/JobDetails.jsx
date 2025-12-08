@@ -11,6 +11,7 @@ import {
   IconPencil, IconListCheck, IconVideo, IconPlus, IconX, IconReload
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import api from '../utils/api';
 
 
 export default function JobDetails() {
@@ -50,15 +51,10 @@ export default function JobDetails() {
 
   const fetchJobDetails = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/jobs/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setJob(data);
-      } else {
-        setError('Job not found');
-      }
+      const data = await api.get(`/jobs/${id}`);
+      setJob(data);
     } catch (err) {
-      setError('Error loading job details');
+      setError(err.response?.data?.detail || 'Error loading job details');
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -72,20 +68,14 @@ export default function JobDetails() {
   const fetchAssignedVideoQuestions = async () => {
     try {
       console.log('📥 Fetching assigned questions for job:', id);
-      const response = await fetch(`http://localhost:8000/jobs/${id}/video-questions`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('📦 Backend response:', data);
-        
-        const questions = Array.isArray(data) ? data : [];
-        const sorted = questions.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-        
-        setAssignedVideoQuestions(sorted);
-        console.log('✅ Loaded', sorted.length, 'assigned questions');
-      } else {
-        console.error('❌ Failed to load assigned questions');
-      }
+      const data = await api.get(`/jobs/${id}/video-questions`);
+      console.log('📦 Backend response:', data);
+
+      const questions = Array.isArray(data) ? data : [];
+      const sorted = questions.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
+      setAssignedVideoQuestions(sorted);
+      console.log('✅ Loaded', sorted.length, 'assigned questions');
     } catch (err) {
       console.error('❌ Error fetching assigned video questions:', err);
     }
@@ -99,32 +89,22 @@ export default function JobDetails() {
     setLoadingVideoQuestions(true);
     try {
       console.log('📥 Fetching all available video questions...');
-      const response = await fetch('http://localhost:8000/video-questions?active_only=true');
-      
-      if (response.ok) {
-        const data = await response.json();
-        const assignedVideoQuestionIds = assignedVideoQuestions.map(q => q.video_question_id);
-        
-        console.log('🔗 Already assigned video_question_ids:', assignedVideoQuestionIds);
-        
-        const availableQuestions = (data || []).filter(
-          q => !assignedVideoQuestionIds.includes(q.id)
-        );
-        
-        console.log('✅ Available (unassigned) questions:', availableQuestions.length);
-        setAllVideoQuestions(availableQuestions);
-      } else {
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to load video questions library',
-          color: 'red',
-        });
-      }
+      const data = await api.get('/video-questions?active_only=true');
+
+      const assignedVideoQuestionIds = assignedVideoQuestions.map(q => q.video_question_id);
+      console.log('🔗 Already assigned video_question_ids:', assignedVideoQuestionIds);
+
+      const availableQuestions = (data || []).filter(
+        q => !assignedVideoQuestionIds.includes(q.id)
+      );
+
+      console.log('✅ Available (unassigned) questions:', availableQuestions.length);
+      setAllVideoQuestions(availableQuestions);
     } catch (err) {
       console.error('❌ Error fetching video questions:', err);
       notifications.show({
         title: 'Error',
-        message: 'Network error while loading video questions',
+        message: err.response?.data?.detail || 'Network error while loading video questions',
         color: 'red',
       });
     } finally {
@@ -161,38 +141,27 @@ export default function JobDetails() {
 
     try {
       console.log('📝 Adding Questions:', selectedQuestionIds);
-      
+
       let successCount = 0;
       let errorCount = 0;
 
       for (let i = 0; i < selectedQuestionIds.length; i++) {
         const questionId = parseInt(selectedQuestionIds[i], 10);
         const displayOrder = assignedVideoQuestions.length + i;
-        
+
         console.log(`➕ Adding Question ID ${questionId} with order ${displayOrder}`);
-        
+
         try {
-          const resp = await fetch('http://localhost:8000/job-video-questions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              job_id: parseInt(id, 10),
-              video_question_id: questionId,
-              display_order: displayOrder,
-            }),
+          const result = await api.post('/job-video-questions', {
+            job_id: parseInt(id, 10),
+            video_question_id: questionId,
+            display_order: displayOrder,
           });
 
-          if (resp.ok) {
-            const result = await resp.json();
-            console.log(`✅ Added successfully. Mapping ID: ${result.id}`);
-            successCount += 1;
-          } else {
-            const errData = await resp.json().catch(() => ({}));
-            console.error(`❌ Failed to add question ${questionId}:`, errData);
-            errorCount += 1;
-          }
+          console.log(`✅ Added successfully. Mapping ID: ${result.id}`);
+          successCount += 1;
         } catch (err) {
-          console.error(`❌ Error adding question ${questionId}:`, err);
+          console.error(`❌ Failed to add question ${questionId}:`, err.response?.data);
           errorCount += 1;
         }
       }
@@ -248,47 +217,21 @@ export default function JobDetails() {
 
     try {
       console.log('🗑️ Deleting JobVideoQuestion mapping ID:', removingMappingId);
-      
-      const response = await fetch(
-        `http://localhost:8000/job-video-questions/${removingMappingId}`,
-        { 
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
 
-      console.log('📡 Delete Response Status:', response.status);
+      await api.delete(`/job-video-questions/${removingMappingId}`);
 
-      if (response.ok) {
-        console.log('✅ Successfully removed mapping');
-        notifications.show({
-          title: 'Removed',
-          message: 'Video question removed from job successfully',
-          color: 'green',
-        });
-        await fetchAssignedVideoQuestions();
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Delete failed:', errorText);
-        
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { detail: errorText };
-        }
-        
-        notifications.show({
-          title: 'Error',
-          message: errorData.detail || 'Failed to remove video question',
-          color: 'red',
-        });
-      }
+      console.log('✅ Successfully removed mapping');
+      notifications.show({
+        title: 'Removed',
+        message: 'Video question removed from job successfully',
+        color: 'green',
+      });
+      await fetchAssignedVideoQuestions();
     } catch (err) {
-      console.error('❌ Network error removing video question:', err);
+      console.error('❌ Error removing video question:', err);
       notifications.show({
         title: 'Error',
-        message: 'Network error while removing video question',
+        message: err.response?.data?.detail || 'Network error while removing video question',
         color: 'red',
       });
     } finally {
@@ -340,17 +283,10 @@ export default function JobDetails() {
     if (!job) return;
     setDeleting(true);
     try {
-      const res = await fetch(`http://localhost:8000/jobs/${job.id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        navigate('/jobs', { state: { deleted: true, title: job.title } });
-      } else {
-        const text = await res.text();
-        setError(text || 'Failed to delete job');
-      }
+      await api.delete(`/jobs/${job.id}`);
+      navigate('/jobs', { state: { deleted: true, title: job.title } });
     } catch (e) {
-      setError('Network error while deleting job');
+      setError(e.response?.data?.detail || 'Network error while deleting job');
     } finally {
       setDeleting(false);
       setDeleteOpen(false);
@@ -420,12 +356,12 @@ export default function JobDetails() {
         <Stack gap="md">
           <Text size="lg" fw={500}>Confirm Removal</Text>
           <Text>
-            Are you sure you want to remove this video question from this job? 
+            Are you sure you want to remove this video question from this job?
             This action cannot be undone.
           </Text>
           <Group justify="flex-end">
-            <Button 
-              variant="default" 
+            <Button
+              variant="default"
               onClick={() => {
                 setRemoveDialogOpen(false);
                 setRemovingMappingId(null);
@@ -433,9 +369,9 @@ export default function JobDetails() {
             >
               Cancel
             </Button>
-            <Button 
-              color="red" 
-              loading={removingQuestion} 
+            <Button
+              color="red"
+              loading={removingQuestion}
               onClick={handleConfirmRemoveQuestion}
               leftSection={<IconX size={16} />}
             >
@@ -466,7 +402,7 @@ export default function JobDetails() {
             </Group>
           ) : allVideoQuestions.length === 0 ? (
             <Alert color="yellow" title="No Available Questions">
-              {assignedVideoQuestions.length > 0 
+              {assignedVideoQuestions.length > 0
                 ? 'All available questions are already assigned to this job.'
                 : 'No video interview questions found. Please create some questions first.'
               }
@@ -486,7 +422,7 @@ export default function JobDetails() {
                 clearable
                 maxDropdownHeight={300}
               />
-              
+
               <Text size="sm" c="dimmed">
                 Selected: <strong>{selectedQuestionIds.length}</strong> question(s) to add
               </Text>
@@ -494,8 +430,8 @@ export default function JobDetails() {
           )}
 
           <Group justify="flex-end" mt="md">
-            <Button 
-              variant="default" 
+            <Button
+              variant="default"
               onClick={() => {
                 setVideoQuestionsModalOpen(false);
                 setSelectedQuestionIds([]);
@@ -601,8 +537,8 @@ export default function JobDetails() {
                     </Group>
                     <Group>
                       <Tooltip label="Refresh questions">
-                        <ActionIcon 
-                          variant="light" 
+                        <ActionIcon
+                          variant="light"
                           onClick={fetchAssignedVideoQuestions}
                         >
                           <IconReload size={16} />
@@ -891,8 +827,8 @@ export default function JobDetails() {
                 {/* STATUS */}
                 <Paper p="md" radius="md" withBorder>
                   <Text c="dimmed" size="sm">Status</Text>
-                  <Badge 
-                    size="lg" 
+                  <Badge
+                    size="lg"
                     color={getStatusColor(job.status)}
                     style={{ marginTop: '8px' }}
                   >
@@ -911,42 +847,42 @@ export default function JobDetails() {
               Back to Jobs
             </Button>
             {userRole === 'hr' && (
-            <Group>
-              <Button
-                variant="light"
-                onClick={handleEditJob}
-                leftSection={<IconPencil size={16} />}
-              >
-                Edit Job
-              </Button>
+              <Group>
+                <Button
+                  variant="light"
+                  onClick={handleEditJob}
+                  leftSection={<IconPencil size={16} />}
+                >
+                  Edit Job
+                </Button>
 
-              <Button
-                variant="light"
-                onClick={handleViewApplications}
-                leftSection={<IconListCheck size={16} />}
-              >
-                View Applications
-              </Button>
+                <Button
+                  variant="light"
+                  onClick={handleViewApplications}
+                  leftSection={<IconListCheck size={16} />}
+                >
+                  View Applications
+                </Button>
 
-              {/* NEW: Video Exam Evaluation button */}
-              <Button
-                variant="light"
-                color="teal"
-                onClick={() => navigate(`/jobs/${job.id}/video-exam-evaluation`)}
-              >
-                Video Exam Evaluation
-              </Button>
+                {/* NEW: Video Exam Evaluation button */}
+                <Button
+                  variant="light"
+                  color="teal"
+                  onClick={() => navigate(`/jobs/${job.id}/video-exam-evaluation`)}
+                >
+                  Video Exam Evaluation
+                </Button>
 
-              <Button
-                color="red"
-                variant="outline"
-                onClick={handleRequestDelete}
-                leftSection={<IconTrash size={16} />}
-              >
-                Delete Job
-              </Button>
-            </Group>
-          )}
+                <Button
+                  color="red"
+                  variant="outline"
+                  onClick={handleRequestDelete}
+                  leftSection={<IconTrash size={16} />}
+                >
+                  Delete Job
+                </Button>
+              </Group>
+            )}
 
 
 

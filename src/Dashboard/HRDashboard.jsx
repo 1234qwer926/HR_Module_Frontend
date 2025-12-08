@@ -5,11 +5,13 @@ import {
   Group, RingProgress, Table, Loader, SimpleGrid
 } from '@mantine/core';
 import { IconBriefcase, IconUsers, IconChartBar, IconPlus } from '@tabler/icons-react';
+import api from '../utils/api';
 
 export default function HRDashboard() {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchDashboard();
@@ -17,19 +19,13 @@ export default function HRDashboard() {
 
   const fetchDashboard = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/hr/dashboard', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDashboard(data);
-      }
+      setLoading(true);
+      setError(null);
+      const data = await api.get('/hr/dashboard');
+      setDashboard(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching dashboard:', error);
+      setError(error.response?.data?.detail || 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
@@ -45,12 +41,32 @@ export default function HRDashboard() {
     );
   }
 
+  if (error) {
+    return (
+      <Container size="xl" py="xl">
+        <Paper p="xl" withBorder style={{ borderColor: '#e74c3c' }}>
+          <Stack align="center" spacing="md">
+            <Text size="xl" weight={600} color="red">
+              ⚠️ Error Loading Dashboard
+            </Text>
+            <Text size="sm" color="dimmed">
+              {error}
+            </Text>
+            <Button onClick={fetchDashboard} variant="outline">
+              Retry
+            </Button>
+          </Stack>
+        </Paper>
+      </Container>
+    );
+  }
+
   return (
     <Container size="xl" py="xl">
       <Stack spacing="xl">
         <Group position="apart">
           <Title order={2}>HR Dashboard</Title>
-          <Button 
+          <Button
             leftIcon={<IconPlus size={16} />}
             onClick={() => navigate('/jobs/create')}
           >
@@ -154,9 +170,9 @@ export default function HRDashboard() {
                   size={180}
                   thickness={16}
                   sections={[
-                    { 
-                      value: Math.min(100, ((dashboard?.avg_cat_theta + 3) / 6) * 100), 
-                      color: 'green' 
+                    {
+                      value: Math.min(100, ((dashboard?.avg_cat_theta + 3) / 6) * 100),
+                      color: 'green'
                     }
                   ]}
                   label={
@@ -197,8 +213,8 @@ export default function HRDashboard() {
                   </td>
                   <td>
                     <Text size="sm" color="dimmed">
-                      {dashboard.total_applications > 0 
-                        ? ((count / dashboard.total_applications) * 100).toFixed(1) 
+                      {dashboard.total_applications > 0
+                        ? ((count / dashboard.total_applications) * 100).toFixed(1)
                         : 0}%
                     </Text>
                   </td>
@@ -226,20 +242,20 @@ export default function HRDashboard() {
         <Paper p="xl" withBorder>
           <Title order={4} mb="md">Quick Actions</Title>
           <Group>
-            <Button 
-              variant="light" 
+            <Button
+              variant="light"
               onClick={() => navigate('/applications')}
             >
               View All Applications
             </Button>
-            <Button 
-              variant="light" 
+            <Button
+              variant="light"
               onClick={() => navigate('/hr-video-exam/questions-management')}
             >
               Manage Video Questions
             </Button>
-            <Button 
-              variant="light" 
+            <Button
+              variant="light"
               onClick={() => navigate('/jobs')}
             >
               View All Jobs

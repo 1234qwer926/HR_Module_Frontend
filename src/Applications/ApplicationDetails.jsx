@@ -20,6 +20,7 @@ import {
   IconBrandGithub
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import api from '../utils/api';
 
 export default function ApplicationDetails() {
   const { id } = useParams();
@@ -41,27 +42,16 @@ export default function ApplicationDetails() {
 
   const fetchApplication = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/applications/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const data = await api.get(`/applications/${id}`);
+      console.log('Application data:', data);
+      setApplication(data);
+      setNewStage(data.current_stage);
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Application data:', data);
-        setApplication(data);
-        setNewStage(data.current_stage);
-
-        if (data.job_id) {
-          fetchJob(data.job_id);
-        }
-      } else {
-        setError('Application not found');
+      if (data.job_id) {
+        fetchJob(data.job_id);
       }
     } catch (err) {
-      setError('Error loading application');
+      setError(err.response?.data?.detail || 'Error loading application');
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -70,11 +60,8 @@ export default function ApplicationDetails() {
 
   const fetchJob = async (jobId) => {
     try {
-      const response = await fetch(`http://localhost:8000/jobs/${jobId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setJob(data);
-      }
+      const data = await api.get(`/jobs/${jobId}`);
+      setJob(data);
     } catch (err) {
       console.error('Error fetching job:', err);
     }
@@ -85,30 +72,17 @@ export default function ApplicationDetails() {
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/applications/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ current_stage: newStage })
-      });
+      await api.put(`/applications/${id}`, { current_stage: newStage });
 
-      if (response.ok) {
-        notifications.show({
-          title: 'Success',
-          message: 'Application stage updated!',
-          color: 'green',
-          icon: <IconCheck size={16} />
-        });
-        fetchApplication();
-      } else {
-        const data = await response.json();
-        setError(data.detail || 'Failed to update stage');
-      }
+      notifications.show({
+        title: 'Success',
+        message: 'Application stage updated!',
+        color: 'green',
+        icon: <IconCheck size={16} />
+      });
+      fetchApplication();
     } catch (err) {
-      setError('Network error');
+      setError(err.response?.data?.detail || 'Failed to update stage');
       console.error('Error:', err);
     } finally {
       setUpdating(false);
@@ -120,26 +94,15 @@ export default function ApplicationDetails() {
       return;
     }
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/applications/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+      await api.delete(`/applications/${id}`);
+      notifications.show({
+        title: 'Deleted',
+        message: 'Application deleted successfully',
+        color: 'red'
       });
-      if (response.ok) {
-        notifications.show({
-          title: 'Deleted',
-          message: 'Application deleted successfully',
-          color: 'red'
-        });
-        navigate(-1);
-      } else {
-        const data = await response.json();
-        setError(data.detail || 'Failed to delete application');
-      }
+      navigate(-1);
     } catch (err) {
-      setError('Network error');
+      setError(err.response?.data?.detail || 'Failed to delete application');
       console.error('Error:', err);
     }
   };

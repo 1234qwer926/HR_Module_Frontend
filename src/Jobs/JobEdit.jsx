@@ -6,6 +6,7 @@ import {
 } from '@mantine/core';
 import { IconCheck, IconAlertCircle } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import api from '../utils/api';
 
 export default function JobEdit() {
   const { id } = useParams();
@@ -47,46 +48,35 @@ export default function JobEdit() {
 
   const fetchJob = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/jobs/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const data = await api.get(`/jobs/${id}`);
+      setFormData({
+        job_code: data.job_code || '',
+        title: data.title || '',
+        department: data.department || '',
+        location: data.location || '',
+        type: data.type || 'full-time',
+        experience_level: data.experience_level || '',
+        num_openings: data.num_openings || 1,
+        required_skills: data.required_skills || [],
+        preferred_skills: data.preferred_skills || [],
+        education_requirement: data.education_requirement || '',
+        minimum_academic_score: data.minimum_academic_score || '',
+        required_certifications: data.required_certifications || [],
+        tools_technologies: data.tools_technologies || [],
+        description: data.description || '',
+        responsibilities: data.responsibilities || '',
+        key_deliverables: data.key_deliverables || '',
+        reporting_to: data.reporting_to || '',
+        keywords: data.keywords || [],
+        salary_range_text: data.salary_range_text || '',
+        benefits: data.benefits || '',
+        status: data.status || 'open',
+        priority: data.priority || 'medium',
+        hiring_manager: data.hiring_manager || '',
+        application_deadline: data.application_deadline || null
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFormData({
-          job_code: data.job_code || '',
-          title: data.title || '',
-          department: data.department || '',
-          location: data.location || '',
-          type: data.type || 'full-time',
-          experience_level: data.experience_level || '',
-          num_openings: data.num_openings || 1,
-          required_skills: data.required_skills || [],
-          preferred_skills: data.preferred_skills || [],
-          education_requirement: data.education_requirement || '',
-          minimum_academic_score: data.minimum_academic_score || '',
-          required_certifications: data.required_certifications || [],
-          tools_technologies: data.tools_technologies || [],
-          description: data.description || '',
-          responsibilities: data.responsibilities || '',
-          key_deliverables: data.key_deliverables || '',
-          reporting_to: data.reporting_to || '',
-          keywords: data.keywords || [],
-          salary_range_text: data.salary_range_text || '',
-          benefits: data.benefits || '',
-          status: data.status || 'open',
-          priority: data.priority || 'medium',
-          hiring_manager: data.hiring_manager || '',
-          application_deadline: data.application_deadline || null
-        });
-      } else {
-        setError('Job not found');
-      }
     } catch (error) {
-      setError('Error loading job');
+      setError(error.response?.data?.detail || 'Error loading job');
       console.error('Error:', error);
     } finally {
       setLoading(false);
@@ -99,30 +89,16 @@ export default function JobEdit() {
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/jobs/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
+      await api.put(`/jobs/${id}`, formData);
+      notifications.show({
+        title: 'Success',
+        message: 'Job updated successfully!',
+        color: 'green',
+        icon: <IconCheck size={16} />
       });
-
-      if (response.ok) {
-        notifications.show({
-          title: 'Success',
-          message: 'Job updated successfully!',
-          color: 'green',
-          icon: <IconCheck size={16} />
-        });
-        setTimeout(() => navigate(`/jobs/${id}`), 1500);
-      } else {
-        const data = await response.json();
-        setError(data.detail || 'Failed to update job');
-      }
+      setTimeout(() => navigate(`/jobs/${id}`), 1500);
     } catch (error) {
-      setError('Network error. Please try again.');
+      setError(error.response?.data?.detail || 'Failed to update job');
       console.error('Error:', error);
     } finally {
       setSaving(false);
@@ -135,26 +111,15 @@ export default function JobEdit() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/jobs/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      await api.delete(`/jobs/${id}`);
+      notifications.show({
+        title: 'Deleted',
+        message: 'Job deleted successfully',
+        color: 'red'
       });
-
-      if (response.ok) {
-        notifications.show({
-          title: 'Deleted',
-          message: 'Job deleted successfully',
-          color: 'red'
-        });
-        setTimeout(() => navigate('/hr/dashboard'), 1500);
-      } else {
-        setError('Failed to delete job');
-      }
+      setTimeout(() => navigate('/hr/dashboard'), 1500);
     } catch (error) {
-      setError('Network error');
+      setError(error.response?.data?.detail || 'Failed to delete job');
       console.error('Error:', error);
     }
   };

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Burger, Container, Group, Button, Drawer, Stack, Divider } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconDashboard, IconBriefcase, IconFileText, IconVideo } from '@tabler/icons-react';
+import { IconDashboard, IconBriefcase, IconFileText, IconVideo, IconLogout } from '@tabler/icons-react';
 import classes from './HeaderSimple.module.css';
 
 export default function HeaderSimple() {
@@ -10,6 +10,9 @@ export default function HeaderSimple() {
   const location = useLocation();
   const [opened, { toggle, close }] = useDisclosure(false);
   const [active, setActive] = useState(location.pathname);
+
+  // Check authentication status
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Paths where header/navbar must be hidden
   const hideHeaderPaths = [
@@ -24,7 +27,15 @@ export default function HeaderSimple() {
     return null;
   }
 
+  // Check authentication on mount and location change
   useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem('access_token');
+      const role = localStorage.getItem('role');
+      setIsAuthenticated(!!token && role === 'hr');
+    };
+
+    checkAuth();
     setActive(location.pathname);
   }, [location.pathname]);
 
@@ -34,20 +45,35 @@ export default function HeaderSimple() {
     close();
   };
 
-  // Public navigation links (no role/auth checking)
+  const handleLogout = () => {
+    // Clear all auth data
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('email');
+
+    // Update state
+    setIsAuthenticated(false);
+
+    // Navigate to login
+    navigate('/login');
+    close();
+  };
+
+  // Public link (always visible)
   const publicLinks = [
-    { link: '/jobs', label: 'Browse Jobs' },
-    { link: '/hr/dashboard', label: 'Dashboard', icon: IconDashboard },
-    // { link: '/jobs', label: 'Jobs', icon: IconBriefcase },
-    { link: '/applications', label: 'Applications', icon: IconFileText },
-    { link: '/hr-video-exam/questions-management', label: 'Video Questions', icon: IconVideo },
-    { link: '/cat/management', label: 'CAT Management', icon: IconFileText },    
+    { link: '/jobs', label: 'Browse Jobs', icon: IconBriefcase },
   ];
 
- 
+  // Admin-only links (only visible when authenticated)
+  const adminLinks = [
+    { link: '/hr/dashboard', label: 'Dashboard', icon: IconDashboard },
+    { link: '/applications', label: 'Applications', icon: IconFileText },
+    { link: '/hr-video-exam/questions-management', label: 'Video Questions', icon: IconVideo },
+    { link: '/cat/management', label: 'CAT Management', icon: IconFileText },
+  ];
 
-  // Currently using only public links (no conditional role logic)
-  const links = publicLinks;
+  // Determine which links to show
+  const links = isAuthenticated ? [...publicLinks, ...adminLinks] : publicLinks;
 
   const items = links.map((link) => (
     <a
@@ -107,14 +133,25 @@ export default function HeaderSimple() {
 
           {/* Desktop Auth Buttons */}
           <Group gap="sm" visibleFrom="sm">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => handleNavigation('/login')}
-            >
-              HR Login
-            </Button>
-            
+            {isAuthenticated ? (
+              <Button
+                variant="light"
+                color="red"
+                size="sm"
+                leftSection={<IconLogout size={16} />}
+                onClick={handleLogout}
+              >
+                Logout
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => handleNavigation('/login')}
+              >
+                HR Login
+              </Button>
+            )}
           </Group>
 
           {/* Mobile Burger */}
@@ -146,15 +183,27 @@ export default function HeaderSimple() {
 
           <Divider my="md" />
 
-          <Button
-            variant="default"
-            size="md"
-            fullWidth
-            onClick={() => handleNavigation('/login')}
-          >
-            HR Login
-          </Button>
-          
+          {isAuthenticated ? (
+            <Button
+              variant="light"
+              color="red"
+              size="md"
+              fullWidth
+              leftSection={<IconLogout size={18} />}
+              onClick={handleLogout}
+            >
+              Logout
+            </Button>
+          ) : (
+            <Button
+              variant="default"
+              size="md"
+              fullWidth
+              onClick={() => handleNavigation('/login')}
+            >
+              HR Login
+            </Button>
+          )}
         </Stack>
       </Drawer>
     </>

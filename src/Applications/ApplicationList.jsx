@@ -5,6 +5,7 @@ import {
   Select, Stack, Loader, Text, ActionIcon, ScrollArea, Alert, Card
 } from '@mantine/core';
 import { IconEye, IconSearch, IconAlertCircle, IconTrophy, IconUser } from '@tabler/icons-react';
+import api from '../utils/api';
 
 export default function ApplicationList() {
   const navigate = useNavigate();
@@ -26,30 +27,20 @@ export default function ApplicationList() {
 
   const fetchApplications = async () => {
     try {
-      const token = localStorage.getItem('token');
-      let url = 'http://localhost:8000/applications';
+      setLoading(true);
+      setError(null);
 
+      let url = '/applications';
       if (jobId) {
-        url = `http://localhost:8000/jobs/${jobId}/applications`;
+        url = `/jobs/${jobId}/applications`;
       }
 
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Applications:', data);
-        setApplications(data);
-      } else {
-        setError('Failed to load applications');
-      }
+      const data = await api.get(url);
+      console.log('Applications:', data);
+      setApplications(data);
     } catch (err) {
       console.error('Error:', err);
-      setError('Network error. Please try again.');
+      setError(err.response?.data?.detail || 'Failed to load applications');
     } finally {
       setLoading(false);
     }
@@ -225,10 +216,10 @@ export default function ApplicationList() {
                           app.resume_score >= 80
                             ? 'green'
                             : app.resume_score >= 60
-                            ? 'blue'
-                            : app.resume_score >= 40
-                            ? 'yellow'
-                            : 'red'
+                              ? 'blue'
+                              : app.resume_score >= 40
+                                ? 'yellow'
+                                : 'red'
                         }
                         variant="light"
                       >
@@ -272,10 +263,10 @@ export default function ApplicationList() {
                       <Text size="sm">
                         {app.applied_at
                           ? new Date(app.applied_at).toLocaleDateString('en-IN', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })
                           : '—'}
                       </Text>
                     </td>
