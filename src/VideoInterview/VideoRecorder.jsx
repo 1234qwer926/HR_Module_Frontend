@@ -36,29 +36,29 @@ export default function VideoRecorder() {
   const fetchQuestions = async () => {
     try {
       const token = localStorage.getItem('token');
-      
+
       // Get application to find job_id
-      const appResponse = await fetch(`http://localhost:8000/applications/${applicationId}`, {
+      const appResponse = await fetch(`http://100.25.42.222:8000/applications/${applicationId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
+
       if (appResponse.ok) {
         const appData = await appResponse.json();
         const jobId = appData.job_id;
         console.log('Job ID:', jobId);
 
         // Get video questions for this job
-        const qResponse = await fetch(`http://localhost:8000/jobs/${jobId}/video-questions`, {
+        const qResponse = await fetch(`http://100.25.42.222:8000/jobs/${jobId}/video-questions`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (qResponse.ok) {
           const data = await qResponse.json();
           console.log('Video questions:', data);
-          
+
           // Extract video_questions array from response
           const videoQuestions = data.video_questions || [];
-          
+
           if (videoQuestions.length > 0) {
             setQuestions(videoQuestions);
             setTimeLeft(videoQuestions[0].duration_seconds);
@@ -81,11 +81,11 @@ export default function VideoRecorder() {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
       });
-      
+
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -105,7 +105,7 @@ export default function VideoRecorder() {
 
   const startRecording = async () => {
     await startCamera();
-    
+
     const mediaRecorder = new MediaRecorder(streamRef.current);
     mediaRecorderRef.current = mediaRecorder;
     chunksRef.current = [];
@@ -126,7 +126,7 @@ export default function VideoRecorder() {
     // Start countdown timer
     const duration = questions[currentQuestionIndex].duration_seconds;
     setTimeLeft(duration);
-    
+
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -142,11 +142,11 @@ export default function VideoRecorder() {
     if (mediaRecorderRef.current && recording) {
       mediaRecorderRef.current.stop();
       setRecording(false);
-      
+
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      
+
       stopCamera();
     }
   };
@@ -160,7 +160,7 @@ export default function VideoRecorder() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/video-responses', {
+      const response = await fetch('http://100.25.42.222:8000/video-responses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -249,9 +249,9 @@ export default function VideoRecorder() {
             </Badge>
           </Group>
 
-          <Progress 
-            value={((currentQuestionIndex + 1) / questions.length) * 100} 
-            size="lg" 
+          <Progress
+            value={((currentQuestionIndex + 1) / questions.length) * 100}
+            size="lg"
           />
 
           {error && (

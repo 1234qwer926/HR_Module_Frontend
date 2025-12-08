@@ -37,7 +37,7 @@ export default function ApplicationCreate() {
 
   // ===== FIXED: Use 0 or null for public applications (no candidate login required) =====
   const candidateId = parseInt(localStorage.getItem('userId'), 10) || null;
-  const [resume_path,set_resume_path]=useState("");
+  const [resume_path, set_resume_path] = useState("");
 
   const [formData, setFormData] = useState({
     job_id: parseInt(jobId, 10),
@@ -92,7 +92,7 @@ export default function ApplicationCreate() {
 
   const fetchJob = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/jobs/${jobId}`);
+      const response = await fetch(`http://100.25.42.222:8000/jobs/${jobId}`);
       if (response.ok) {
         const data = await response.json();
         setJob(data);
@@ -117,25 +117,25 @@ export default function ApplicationCreate() {
       const formDataUpload = new FormData();
       formDataUpload.append('file', file);
 
-      const uploadResponse = await fetch('http://localhost:8000/upload-to-s3', {
-      method: 'POST',
-      body: formDataUpload,
-    });
+      const uploadResponse = await fetch('http://100.25.42.222:8000/upload-to-s3', {
+        method: 'POST',
+        body: formDataUpload,
+      });
 
-    const uploadResult = await uploadResponse.json();
-    console.log("S3 upload:", uploadResult);
+      const uploadResult = await uploadResponse.json();
+      console.log("S3 upload:", uploadResult);
 
-    // Save the S3 resume path
-    set_resume_path(uploadResult.key);
+      // Save the S3 resume path
+      set_resume_path(uploadResult.key);
 
-    setFormData((prev) => ({
-      ...prev,
-      resume_path: uploadResult.key,
-    }));
+      setFormData((prev) => ({
+        ...prev,
+        resume_path: uploadResult.key,
+      }));
 
-      
 
-     
+
+
     } catch (err) {
       console.error('Error parsing resume:', err);
       notifications.show({
@@ -189,7 +189,7 @@ export default function ApplicationCreate() {
       const submissionData = {
         ...formData,
         job_id: parseInt(jobId, 10),
-        resume_path:resume_path,
+        resume_path: resume_path,
         candidate_id: candidateId, // Will be null for public applications
         date_of_birth: formData.date_of_birth
           ? new Date(formData.date_of_birth).toISOString().split('T')[0]
@@ -201,7 +201,7 @@ export default function ApplicationCreate() {
 
       console.log('Submitting application:', submissionData);
 
-      const response = await fetch('http://localhost:8000/applications', {
+      const response = await fetch('http://100.25.42.222:8000/applications', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

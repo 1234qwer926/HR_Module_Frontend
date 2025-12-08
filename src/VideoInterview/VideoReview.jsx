@@ -27,7 +27,7 @@ export default function VideoReview() {
   const fetchVideos = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/applications/${applicationId}/video-responses`, {
+      const response = await fetch(`http://100.25.42.222:8000/applications/${applicationId}/video-responses`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -37,7 +37,7 @@ export default function VideoReview() {
         const data = await response.json();
         console.log('Video responses:', data);
         setVideos(data);
-        
+
         if (data.length > 0) {
           setRating(data[0].rating || 3);
           setFeedback(data[0].feedback || '');
@@ -60,17 +60,17 @@ export default function VideoReview() {
     try {
       const token = localStorage.getItem('token');
       const currentVideo = videos[currentVideoIndex];
-      
-      const response = await fetch(`http://localhost:8000/video-responses/${currentVideo.id}`, {
+
+      const response = await fetch(`http://100.25.42.222:8000/video-responses/${currentVideo.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ 
-          rating, 
+        body: JSON.stringify({
+          rating,
           feedback,
-          reviewed: true 
+          reviewed: true
         })
       });
 
@@ -81,7 +81,7 @@ export default function VideoReview() {
           color: 'green',
           icon: <IconCheck size={16} />
         });
-        
+
         // Move to next video or finish
         setTimeout(() => {
           if (currentVideoIndex < videos.length - 1) {
@@ -161,12 +161,12 @@ export default function VideoReview() {
             <video
               controls
               style={{ width: '100%', borderRadius: 8 }}
-              src={`http://localhost:8000${currentVideo.video_path}`}
+              src={`http://100.25.42.222:8000${currentVideo.video_path}`}
             />
           </Paper>
 
           <Text size="sm" color="dimmed">
-            Duration: {currentVideo.duration_seconds}s | 
+            Duration: {currentVideo.duration_seconds}s |
             Submitted: {new Date(currentVideo.submitted_at).toLocaleString()}
           </Text>
 
@@ -192,16 +192,16 @@ export default function VideoReview() {
           <Divider />
 
           <Group position="apart">
-            <Button 
-              variant="subtle" 
+            <Button
+              variant="subtle"
               onClick={() => navigate(`/applications/${applicationId}`)}
             >
               Back to Application
             </Button>
-            
+
             <Group>
               {currentVideoIndex > 0 && (
-                <Button 
+                <Button
                   variant="light"
                   onClick={() => {
                     setCurrentVideoIndex(currentVideoIndex - 1);
@@ -213,7 +213,7 @@ export default function VideoReview() {
                   Previous
                 </Button>
               )}
-              
+
               <Button onClick={handleSubmitReview} loading={saving}>
                 {currentVideoIndex < videos.length - 1 ? 'Save & Next' : 'Save & Finish'}
               </Button>

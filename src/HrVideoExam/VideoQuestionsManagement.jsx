@@ -44,7 +44,7 @@ import {
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://100.25.42.222:8000';
 
 const VideoQuestionsManagement = () => {
   // State Management
@@ -346,9 +346,9 @@ const VideoQuestionsManagement = () => {
   const avgDuration =
     questions.length > 0
       ? Math.round(
-          questions.reduce((sum, q) => sum + q.duration_seconds, 0) /
-            questions.length
-        )
+        questions.reduce((sum, q) => sum + q.duration_seconds, 0) /
+        questions.length
+      )
       : 0;
   const shortQuestions = questions.filter((q) => q.duration_seconds <= 90).length;
   const mediumQuestions = questions.filter(

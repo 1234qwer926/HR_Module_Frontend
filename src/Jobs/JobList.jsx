@@ -19,16 +19,16 @@ export default function JobList() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      let url = 'http://localhost:8000/jobs';
+      let url = 'http://100.25.42.222:8000/jobs';
       const params = new URLSearchParams();
-      
+
       if (filterStatus && filterStatus !== 'all') {
         params.append('status', filterStatus);
       }
       if (filterExperience) {
         params.append('experience_level', filterExperience);
       }
-      
+
       if (params.toString()) {
         url += `?${params.toString()}`;
       }
@@ -39,7 +39,7 @@ export default function JobList() {
           'Content-Type': 'application/json',
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('Fetched jobs:', data);
@@ -84,8 +84,8 @@ export default function JobList() {
     }
   };
 
-  const filteredJobs = jobs.filter(job => 
-    (job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredJobs = jobs.filter(job =>
+  (job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     job.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     job.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     job.keywords?.some(k => k.toLowerCase().includes(searchTerm.toLowerCase())))
@@ -258,9 +258,9 @@ export default function JobList() {
 
                   {/* PRIORITY */}
                   {job.priority && (
-                    <Badge 
-                      color={getPriorityColor(job.priority)} 
-                      variant="dot" 
+                    <Badge
+                      color={getPriorityColor(job.priority)}
+                      variant="dot"
                       size="sm"
                       style={{ width: 'fit-content' }}
                     >
@@ -286,8 +286,8 @@ export default function JobList() {
         {/* NO JOBS MESSAGE */}
         {filteredJobs.length === 0 && !error && (
           <Text ta="center" c="dimmed" py="xl">
-            {jobs.length === 0 
-              ? 'No jobs available yet.' 
+            {jobs.length === 0
+              ? 'No jobs available yet.'
               : 'No jobs found matching your search.'}
           </Text>
         )}

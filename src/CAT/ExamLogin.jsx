@@ -26,7 +26,7 @@ const ExamLogin = () => {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:8000/cat/start', formData);
+      const response = await axios.post('http://100.25.42.222:8000/cat/start', formData);
 
       // Store session info with initial time (30 minutes = 1800 seconds)
       const sessionData = {

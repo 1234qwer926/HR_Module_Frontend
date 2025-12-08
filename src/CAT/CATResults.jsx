@@ -21,7 +21,7 @@ export default function CATResults() {
   const fetchResults = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/cat/results/${applicationId}`, {
+      const response = await fetch(`http://100.25.42.222:8000/cat/results/${applicationId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -89,9 +89,9 @@ export default function CATResults() {
                     size={120}
                     thickness={12}
                     sections={[
-                      { 
-                        value: Math.min(100, ((results.theta + 3) / 6) * 100), 
-                        color: getThetaColor(results.theta) 
+                      {
+                        value: Math.min(100, ((results.theta + 3) / 6) * 100),
+                        color: getThetaColor(results.theta)
                       }
                     ]}
                     label={
@@ -205,7 +205,7 @@ export default function CATResults() {
           <Alert icon={<IconAlertCircle size={16} />} title="Interpretation" color="blue">
             <Stack spacing="xs">
               <Text size="sm">
-                <strong>Theta (θ):</strong> Ability estimate on a scale from -3 to +3. 
+                <strong>Theta (θ):</strong> Ability estimate on a scale from -3 to +3.
                 Higher values indicate greater ability.
               </Text>
               <Text size="sm">

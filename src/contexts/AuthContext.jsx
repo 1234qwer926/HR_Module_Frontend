@@ -16,9 +16,9 @@ export function AuthProvider({ children }) {
   // Setup axios interceptors ONCE on mount (not in every request)
   useEffect(() => {
     console.log('🔧 Setting up Axios interceptors...');
-    
+
     // Configure axios defaults
-    axios.defaults.baseURL = 'http://localhost:8000';
+    axios.defaults.baseURL = 'http://100.25.42.222:8000';
     axios.defaults.withCredentials = true;
 
     // Add request interceptor to add Authorization header

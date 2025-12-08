@@ -39,7 +39,7 @@ import {
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://100.25.42.222:8000';
 
 const CATManagement = () => {
   // State Management
@@ -407,8 +407,8 @@ const CATManagement = () => {
             <Title order={2} mt="xs">
               {questions.length > 0
                 ? (
-                    questions.reduce((sum, q) => sum + q.b, 0) / questions.length
-                  ).toFixed(2)
+                  questions.reduce((sum, q) => sum + q.b, 0) / questions.length
+                ).toFixed(2)
                 : '0.00'}
             </Title>
           </Card>

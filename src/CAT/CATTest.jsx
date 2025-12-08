@@ -14,7 +14,7 @@ export default function CATTest() {
   const [submitting, setSubmitting] = useState(false);
   const [testStarted, setTestStarted] = useState(false);
   const [testCompleted, setTestCompleted] = useState(false);
-  
+
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [questionNumber, setQuestionNumber] = useState(0);
@@ -36,7 +36,7 @@ export default function CATTest() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/cat/start/${applicationId}`, {
+      const response = await fetch(`http://100.25.42.222:8000/cat/start/${applicationId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -71,7 +71,7 @@ export default function CATTest() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/cat/answer', {
+      const response = await fetch('http://100.25.42.222:8000/cat/answer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +118,7 @@ export default function CATTest() {
         <Paper shadow="sm" p="xl" radius="md" withBorder>
           <Stack spacing="lg">
             <Title order={2}>Computer Adaptive Test (CAT)</Title>
-            
+
             <Alert icon={<IconAlertCircle size={16} />} title="Instructions" color="blue">
               <Stack spacing="xs">
                 <Text size="sm">• This is an adaptive test - questions adjust to your ability level</Text>
@@ -135,9 +135,9 @@ export default function CATTest() {
               </Alert>
             )}
 
-            <Button 
-              size="lg" 
-              onClick={startTest} 
+            <Button
+              size="lg"
+              onClick={startTest}
               loading={loading}
               fullWidth
             >
@@ -156,7 +156,7 @@ export default function CATTest() {
           <Stack spacing="lg" align="center">
             <IconCheck size={64} color="green" />
             <Title order={2}>Test Completed!</Title>
-            
+
             <Alert icon={<IconCheck size={16} />} title="Success" color="green" style={{ width: '100%' }}>
               Your responses have been recorded. The HR team will review your results.
             </Alert>
@@ -186,9 +186,9 @@ export default function CATTest() {
             </Group>
           </Group>
 
-          <Progress 
-            value={(questionNumber / totalQuestions) * 100} 
-            size="lg" 
+          <Progress
+            value={(questionNumber / totalQuestions) * 100}
+            size="lg"
             radius="md"
           />
 
@@ -216,9 +216,9 @@ export default function CATTest() {
             </Radio.Group>
           </Paper>
 
-          <Button 
-            size="lg" 
-            onClick={submitAnswer} 
+          <Button
+            size="lg"
+            onClick={submitAnswer}
             loading={submitting}
             disabled={!selectedAnswer}
             fullWidth

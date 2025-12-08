@@ -14,7 +14,7 @@ export function AuthenticationForm() {
     password: ''
   });
 
-  const API_BASE = 'http://localhost:8000';
+  const API_BASE = 'http://100.25.42.222:8000';
 
   /**
    * Handle Admin Login
