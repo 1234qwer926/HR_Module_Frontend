@@ -30,9 +30,9 @@ const CATExam = () => {
   const [cameraActive, setCameraActive] = useState(false);
   const [screenActive, setScreenActive] = useState(false);
   const [examStarted, setExamStarted] = useState(false);
-  
+
   // TIMER STATE
-  const [timeLeft, setTimeLeft] = useState(40 * 60); // 40 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes in seconds
 
   // FACE DETECTION STATE
   const [modelsLoaded, setModelsLoaded] = useState(false);
@@ -57,7 +57,7 @@ const CATExam = () => {
   const modelRetryCountRef = useRef(0);
   const tfBackendReadyRef = useRef(false);
   const timerIntervalRef = useRef(null);
-  
+
   // NEW: Track if video is properly connected
   const videoConnectedRef = useRef(false);
 
@@ -164,7 +164,7 @@ const CATExam = () => {
   }, [examStarted]);
 
   const handleTimeUp = () => {
-    debugLog('TIME_UP', '40 minutes elapsed. Auto-submitting exam.');
+    debugLog('TIME_UP', '30 minutes elapsed. Auto-submitting exam.');
     showWarning('Time is up! Submitting your exam...');
     if (sessionData) {
       completeExam(sessionData.session_id);
@@ -185,7 +185,7 @@ const CATExam = () => {
       try {
         setModelLoadingError(null);
         const MODEL_URL = '/models/';
-        
+
         let attempts = 0;
         while (!tfBackendReadyRef.current && attempts < 20) {
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -224,6 +224,21 @@ const CATExam = () => {
       return;
     }
     setSessionData(session);
+
+    // Restore saved time if available (for session recovery)
+    if (session.time_left && session.time_left > 0) {
+      setTimeLeft(session.time_left);
+      console.log('[SESSION] Restored time from saved session:', session.time_left);
+    }
+
+    // Restore stats if available
+    if (session.items_completed) {
+      setStats({
+        itemsCompleted: session.items_completed,
+        currentTheta: session.current_theta || 0.0
+      });
+    }
+
     setLoading(false);
   }, [location.state, navigate]);
 
@@ -232,9 +247,9 @@ const CATExam = () => {
   // ============================================================
   useEffect(() => {
     if (!cameraStream || !videoRef.current) {
-      console.log('[VIDEO] Cannot attach - missing:', { 
-        hasCameraStream: !!cameraStream, 
-        hasVideoRef: !!videoRef.current 
+      console.log('[VIDEO] Cannot attach - missing:', {
+        hasCameraStream: !!cameraStream,
+        hasVideoRef: !!videoRef.current
       });
       return;
     }
@@ -248,7 +263,7 @@ const CATExam = () => {
           srcObject: !!videoRef.current?.srcObject,
           videoConnected: videoConnectedRef.current
         });
-        
+
         // Check stream health
         const videoTrack = cameraStream.getVideoTracks()[0];
         console.log('[VIDEO] Stream track status:', {
@@ -264,11 +279,11 @@ const CATExam = () => {
         } else {
           console.log('[VIDEO] Stream already attached, re-validating');
         }
-        
+
         // Wait for video to be ready
         await new Promise((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error('Video load timeout')), 5000);
-          
+
           if (videoRef.current.readyState >= 2) {
             clearTimeout(timeout);
             resolve();
@@ -283,7 +298,7 @@ const CATExam = () => {
         console.log('[VIDEO] Metadata loaded, attempting play');
         await videoRef.current.play();
         videoConnectedRef.current = true;
-        
+
         console.log('[VIDEO] ✓ Stream attached and playing successfully', {
           videoWidth: videoRef.current.videoWidth,
           videoHeight: videoRef.current.videoHeight,
@@ -321,7 +336,7 @@ const CATExam = () => {
         videoConnected: videoConnectedRef.current,
         alreadyMonitoring: isFaceMonitoring
       });
-      
+
       const timer = setTimeout(() => {
         if (!isFaceMonitoring) {
           console.log('[FACE-TRIGGER] Executing face monitoring start');
@@ -332,6 +347,7 @@ const CATExam = () => {
       return () => clearTimeout(timer);
     }
   }, [examStarted, modelsLoaded, videoConnectedRef.current, isFaceMonitoring]);
+
   useEffect(() => {
     if (!examStarted || !cameraStream || !videoRef.current) return;
 
@@ -342,7 +358,7 @@ const CATExam = () => {
 
       const video = videoRef.current;
       const stream = video.srcObject;
-      
+
       console.log('[VIDEO-MONITOR] Health check:', {
         paused: video.paused,
         readyState: video.readyState,
@@ -372,7 +388,7 @@ const CATExam = () => {
       // Check if video dimensions are zero (black screen indicator)
       if (video.videoWidth === 0 || video.videoHeight === 0) {
         console.error('[VIDEO-MONITOR] Zero dimensions detected - video not rendering!');
-        
+
         // Try to recover
         const track = cameraStream.getVideoTracks()[0];
         console.log('[VIDEO-MONITOR] Track status:', {
@@ -452,29 +468,29 @@ const CATExam = () => {
     // Industry standard: 30s-120s for snapshots, 1-2s for continuous monitoring
     DETECTION_INTERVAL: 1000,     // 1 second = continuous real-time monitoring (recommended)
     SNAPSHOT_INTERVAL: 30000,     // 30 seconds = periodic snapshot capture (Testlify uses 120s)
-    
+
     // WARNING THRESHOLDS
-    WARNING_THRESHOLD: 5,         // 5 frames × 1s = 5 seconds without face (strict)
+    WARNING_THRESHOLD: 30,        // 30 frames × 1s = 30 seconds without face (relaxed)
     MAX_WARNINGS_BEFORE_FLAG: 3,  // Flag exam after 3 warnings (industry standard)
-    
+
     // FACE DETECTION SENSITIVITY
     DETECTION_THRESHOLD: 0.5,     // 0.5 = balanced (0.3 = more sensitive, 0.7 = less sensitive)
-    
+
     // LIGHTING QUALITY THRESHOLDS
     MIN_BRIGHTNESS: 50,           // Below = too dark
     MAX_BRIGHTNESS: 220,          // Above = too bright/washed out
-    
+
     // GAZE & HEAD POSE (Future enhancement)
     GAZE_WARNING_THRESHOLD: 10,   // Warn after 10 seconds looking away
     HEAD_TURN_ANGLE_MAX: 30,      // Max 30 degrees head turn before warning
-    
+
     // LOGGING & REPORTING
     LOG_INTERVAL: 30,             // Log every 30 checks = 30 seconds
     ALERT_COOLDOWN: 10000,        // 10 seconds between duplicate alerts
-    
+
     // MULTI-FACE DETECTION
     IMMEDIATE_MULTI_FACE_ALERT: true,  // Alert immediately on multiple faces
-    
+
     // AUDIO MONITORING (if implemented)
     AUDIO_THRESHOLD_DB: -30,      // Detect unusual audio levels
     VOICE_DETECTION_INTERVAL: 5000 // Check for voice every 5 seconds
@@ -490,7 +506,7 @@ const CATExam = () => {
       actions: ['Log event', 'Continue monitoring']
     },
     MEDIUM: {
-      name: 'Medium Risk', 
+      name: 'Medium Risk',
       color: 'orange',
       actions: ['Show warning', 'Increment counter', 'Flag for review']
     },
@@ -584,21 +600,21 @@ const CATExam = () => {
         // Detect faces
         const detections = await faceapi.detectAllFaces(
           video,
-          new faceapi.TinyFaceDetectorOptions({ 
-            inputSize: 224, 
-            scoreThreshold: FACE_DETECTION_CONFIG.DETECTION_THRESHOLD 
+          new faceapi.TinyFaceDetectorOptions({
+            inputSize: 224,
+            scoreThreshold: FACE_DETECTION_CONFIG.DETECTION_THRESHOLD
           })
         );
 
         // Check lighting quality
         const brightness = await checkBrightness(video);
-        const lightingGood = brightness >= FACE_DETECTION_CONFIG.MIN_BRIGHTNESS && 
-                            brightness <= FACE_DETECTION_CONFIG.MAX_BRIGHTNESS;
+        const lightingGood = brightness >= FACE_DETECTION_CONFIG.MIN_BRIGHTNESS &&
+          brightness <= FACE_DETECTION_CONFIG.MAX_BRIGHTNESS;
         setLightingQuality(lightingGood ? 'good' : 'poor');
 
         if (canvas) {
           const ctx = canvas.getContext('2d');
-          
+
           // Set canvas dimensions to match video
           if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
             canvas.width = video.videoWidth;
@@ -606,13 +622,13 @@ const CATExam = () => {
           }
 
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          
+
           // Handle detection results
           if (detections.length === 0) {
             consecutiveNoFaceFrames++;
             setFaceDetected(false);
             setMultipleFaces(false);
-            
+
             // Warn after threshold consecutive frames without face
             if (consecutiveNoFaceFrames === FACE_DETECTION_CONFIG.WARNING_THRESHOLD) {
               const warningTime = (FACE_DETECTION_CONFIG.WARNING_THRESHOLD * FACE_DETECTION_CONFIG.DETECTION_INTERVAL) / 1000;
@@ -640,7 +656,7 @@ const CATExam = () => {
             width: video.videoWidth,
             height: video.videoHeight,
           });
-          
+
           faceapi.draw.drawDetections(canvas, resizedDetections);
 
           // Log detection status at configured interval
@@ -665,7 +681,7 @@ const CATExam = () => {
     };
 
     // Run detection at configured interval
-    console.log(`[FACE-MONITOR] Setting up detection interval (${FACE_DETECTION_CONFIG.DETECTION_INTERVAL}ms = ${FACE_DETECTION_CONFIG.DETECTION_INTERVAL/1000}s)`);
+    console.log(`[FACE-MONITOR] Setting up detection interval (${FACE_DETECTION_CONFIG.DETECTION_INTERVAL}ms = ${FACE_DETECTION_CONFIG.DETECTION_INTERVAL / 1000}s)`);
     console.log(`[FACE-MONITOR] Warning will trigger after ${(FACE_DETECTION_CONFIG.WARNING_THRESHOLD * FACE_DETECTION_CONFIG.DETECTION_INTERVAL) / 1000} seconds without face`);
     detectionIntervalRef.current = setInterval(() => detectFaces(), FACE_DETECTION_CONFIG.DETECTION_INTERVAL);
   };
@@ -728,7 +744,7 @@ const CATExam = () => {
     try {
       setShowPermissionDialog(false);
       setExamStarted(true);
-      
+
       await new Promise(resolve => setTimeout(resolve, 300));
 
       const docElem = document.documentElement;
@@ -775,7 +791,7 @@ const CATExam = () => {
       setCurrentItem(response.data);
       setSelectedOption('');
       setItemStartTime(Date.now());
-      
+
       console.log('[FETCH] Next question loaded');
       console.log('[FETCH] Video state after fetch:', {
         paused: videoRef.current?.paused,
@@ -808,7 +824,7 @@ const CATExam = () => {
 
     setSubmitting(true);
     const responseTime = Math.floor((Date.now() - itemStartTime) / 1000);
-    
+
     try {
       const response = await axios.post('http://localhost:8000/cat/submit-answer', {
         session_id: sessionData.session_id,
@@ -821,10 +837,21 @@ const CATExam = () => {
 
       console.log('[SUBMIT] Answer submitted successfully');
 
-      setStats({
+      const updatedStats = {
         itemsCompleted: response.data.items_completed,
         currentTheta: response.data.current_theta
-      });
+      };
+      setStats(updatedStats);
+
+      // Update session data with latest theta and time left
+      const updatedSessionData = {
+        ...sessionData,
+        current_theta: response.data.current_theta,
+        time_left: timeLeft,
+        items_completed: response.data.items_completed
+      };
+      setSessionData(updatedSessionData);
+      localStorage.setItem('cat_session', JSON.stringify(updatedSessionData));
 
       showFeedback(response.data.is_correct);
 
@@ -864,7 +891,7 @@ const CATExam = () => {
   const completeExam = async (sessionId) => {
     try {
       if (detectionIntervalRef.current) clearInterval(detectionIntervalRef.current);
-      
+
       const response = await axios.post('http://localhost:8000/cat/complete', {
         session_id: sessionId,
         face_violations: faceWarnings,
@@ -901,14 +928,16 @@ const CATExam = () => {
                   <li>Use a quiet environment with minimal background noise</li>
                   <li>No switching between tabs or applications</li>
                   <li>Keep your entire face visible throughout the exam</li>
-                  <li><strong>Time Limit:</strong> The exam will auto-submit after 40 minutes.</li>
+                  <li><strong>Time Limit:</strong> The exam will auto-submit after 30 minutes.</li>
                   <li>Your entire screen will be recorded during the exam</li>
                   <li>You cannot go back to previous questions</li>
                 </ul>
               </div>
-              <button className="start-exam-button" onClick={handleInstructionsConfirm}>
-                I Understand - Proceed to Setup
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '30px' }}>
+                <button className="start-exam-button" onClick={handleInstructionsConfirm}>
+                  I Understand - Proceed to Setup
+                </button>
+              </div>
             </>
           )}
 
@@ -921,12 +950,12 @@ const CATExam = () => {
               {modelLoadingError && <div className="error-message"><p>{modelLoadingError}</p></div>}
               <div className="setup-preview">
                 <h2>Camera Preview</h2>
-                <div className="camera-preview-container">
-                  <video ref={videoRef} autoPlay playsInline muted className="preview-video" />
-                  <canvas ref={canvasRef} className="preview-canvas" />
+                <div className="camera-preview-container" style={{ maxHeight: '300px' }}>
+                  <video ref={videoRef} autoPlay playsInline muted className="preview-video" style={{ maxHeight: '300px' }} />
+                  <canvas ref={canvasRef} className="preview-canvas" style={{ maxHeight: '300px' }} />
                   <div className="preview-status">
-                    {!cameraActive ? <span className="status-badge inactive">Not connected</span> : 
-                     <span className="status-badge active">Camera Active</span>}
+                    {!cameraActive ? <span className="status-badge inactive">Not connected</span> :
+                      <span className="status-badge active">Camera Active</span>}
                   </div>
                 </div>
               </div>
@@ -950,13 +979,13 @@ const CATExam = () => {
                 <p className="warning-text">
                   To ensure academic integrity, you must share your <strong>entire screen</strong>.
                 </p>
-                <ol className="screen-instruction-list" style={{textAlign: 'left', margin: '15px 0'}}>
+                <ol className="screen-instruction-list" style={{ textAlign: 'left', margin: '15px 0' }}>
                   <li>Click the "Grant Screen Access" button below.</li>
                   <li>A browser popup will appear. Select the tab labeled <strong>"Entire Screen"</strong> (or "Entire Monitor").</li>
                   <li>Click on the preview image of your screen to select it.</li>
                   <li>Click <strong>"Share"</strong> to confirm.</li>
                 </ol>
-                <p style={{fontSize: '0.9em', color: '#666'}}>
+                <p style={{ fontSize: '0.9em', color: '#666' }}>
                   <em>Note: Selecting "Window" or "Chrome Tab" is invalid and will not allow the exam to start.</em>
                 </p>
               </div>
@@ -976,14 +1005,14 @@ const CATExam = () => {
               <div className="instructions-section">
                 <h2>Final Checklist</h2>
                 <ul className="instructions-list">
-                   <li>✅ Camera is active and monitoring.</li>
-                   <li>✅ Screen sharing is active and monitoring.</li>
-                   <li>✅ Fullscreen mode will activate automatically.</li>
-                   <li>⏱️ <strong>Time Limit:</strong> You have 40 minutes to complete 30 questions.</li>
-                   <li>⚠️ Do not refresh the page or close the browser.</li>
+                  <li>✅ Camera is active and monitoring.</li>
+                  <li>✅ Screen sharing is active and monitoring.</li>
+                  <li>✅ Fullscreen mode will activate automatically.</li>
+                  <li>⏱️ <strong>Time Limit:</strong> You have 30 minutes to complete 30 questions.</li>
+                  <li>⚠️ Do not refresh the page or close the browser.</li>
                 </ul>
-                <p style={{marginTop: '15px', fontWeight: 'bold', color: '#d9534f'}}>
-                    Clicking "Start Exam Now" will begin the timer immediately.
+                <p style={{ marginTop: '15px', fontWeight: 'bold', color: '#d9534f' }}>
+                  Clicking "Start Exam Now" will begin the timer immediately.
                 </p>
               </div>
               <div className="button-group">
@@ -1054,21 +1083,21 @@ const CATExam = () => {
           background: '#000',
           boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
         }}>
-          <video 
-            ref={videoRef} 
-            autoPlay 
-            playsInline 
-            muted 
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
             className="monitoring-video"
-            style={{ 
+            style={{
               display: 'block',
               width: '100%',
               height: '100%',
               objectFit: 'cover'
             }}
           />
-          <canvas 
-            ref={canvasRef} 
+          <canvas
+            ref={canvasRef}
             className="monitoring-canvas"
             style={{
               position: 'absolute',
@@ -1102,24 +1131,6 @@ const CATExam = () => {
             }}></div>
             LIVE
           </div>
-          {/* Face status overlay */}
-          {!faceDetected && (
-            <div style={{
-              position: 'absolute',
-              bottom: '8px',
-              left: '8px',
-              right: '8px',
-              background: 'rgba(255, 71, 87, 0.9)',
-              color: 'white',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontSize: '10px',
-              textAlign: 'center',
-              fontWeight: 'bold'
-            }}>
-              ⚠ Face Not Visible
-            </div>
-          )}
         </div>
       )}
 
@@ -1142,22 +1153,22 @@ const CATExam = () => {
           {lightingQuality === 'good' ? '✓ Good Lighting' : '⚠ Poor Lighting'}
         </div>
         <div className="monitor-indicator timer" style={{ backgroundColor: timerColor, color: 'white', fontWeight: 'bold' }}>
-           ⏱️ {formatTime(timeLeft)}
+          ⏱️ {formatTime(timeLeft)}
         </div>
       </div>
 
       <div className="exam-header">
         <div className="candidate-info">
-          <h2>{sessionData.candidate_name}</h2>
-          <p>{sessionData.job_title}</p>
+          <h2 style={{ color: '#ffffffff' }}>{sessionData.candidate_name}</h2>
+          <p style={{ color: '#ffffffff' }}>{sessionData.job_title}</p>
         </div>
         <div className="exam-stats">
           <div className="stat-item">
-            <span className="stat-label">Progress</span>
+            <span className="stat-label" style={{ color: '#ffffffff' }}>Progress</span>
             <div className="progress-bar-container">
-                <div className="progress-bar-fill" style={{width: `${progressPercentage}%`}}></div>
+              <div className="progress-bar-fill" style={{ width: `${progressPercentage}%` }}></div>
             </div>
-            <span className="stat-value small">{stats.itemsCompleted} / 30</span>
+            <span className="stat-value small" style={{ color: '#ffffffff' }}>{stats.itemsCompleted} / 30</span>
           </div>
         </div>
       </div>
@@ -1166,12 +1177,12 @@ const CATExam = () => {
         <div className="exam-content">
           <div className="question-card">
             <div className="question-header-row">
-                <div className="question-number">Question {currentItem.item_number}</div>
-                <div className="question-timer">Time Left: {formatTime(timeLeft)}</div>
+              <div className="question-number" style={{ color: '#ffffffff' }}>Question {currentItem.item_number}</div>
+              <div className="question-timer" style={{ color: '#ffffffff', fontWeight: 'bold' }}>Time Left: {formatTime(timeLeft)}</div>
             </div>
-            
-            <div className="question-text">{currentItem.question}</div>
-            
+
+            <div className="question-text" style={{ color: '#ffffffff' }}>{currentItem.question}</div>
+
             <div className="options-container">
               {optionsArray.map((option) => (
                 <div
@@ -1179,13 +1190,13 @@ const CATExam = () => {
                   className={`option ${selectedOption === option ? 'selected' : ''} ${submitting ? 'disabled' : ''}`}
                   onClick={() => !submitting && handleOptionSelect(option)}
                 >
-                  <div className="option-letter">{option}</div>
-                  <div className="option-text">{currentItem[`option_${option.toLowerCase()}`]}</div>
+                  <div className="option-letter" style={{ color: '#ffffff' }}>{option}</div>
+                  <div className="option-text" style={{ color: '#ffffff' }}>{currentItem[`option_${option.toLowerCase()}`]}</div>
                   {selectedOption === option && <div className="option-checkmark">✓</div>}
                 </div>
               ))}
             </div>
-            
+
             <button className="submit-answer-button" onClick={submitAnswer} disabled={!selectedOption || submitting}>
               {submitting ? 'Submitting...' : 'Submit Answer'}
             </button>

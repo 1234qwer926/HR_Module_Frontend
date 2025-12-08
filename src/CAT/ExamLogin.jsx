@@ -27,12 +27,19 @@ const ExamLogin = () => {
 
     try {
       const response = await axios.post('http://localhost:8000/cat/start', formData);
-      
-      // Store session info
-      localStorage.setItem('cat_session', JSON.stringify(response.data));
-      
+
+      // Store session info with initial time (30 minutes = 1800 seconds)
+      const sessionData = {
+        ...response.data,
+        time_left: 30 * 60, // 30 minutes in seconds
+        items_completed: 0,
+        current_theta: 0.0
+      };
+
+      localStorage.setItem('cat_session', JSON.stringify(sessionData));
+
       // Navigate to exam
-      navigate('/exam', { state: { sessionData: response.data } });
+      navigate('/exam', { state: { sessionData } });
     } catch (err) {
       if (err.response) {
         setError(err.response.data.detail || 'Invalid credentials');
@@ -118,7 +125,7 @@ const ExamLogin = () => {
           <h3>Exam Information</h3>
           <ul>
             <li>📝 Adaptive test with 10-30 questions</li>
-            <li>⏱️ No time limit per question</li>
+            <li>⏱️ 30 minutes time limit</li>
             <li>🎯 Difficulty adjusts based on your performance</li>
             <li>⚠️ You cannot go back to previous questions</li>
           </ul>
