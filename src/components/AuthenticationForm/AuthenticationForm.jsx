@@ -14,7 +14,7 @@ export function AuthenticationForm() {
     password: ''
   });
 
-  const API_BASE = 'https://ratio-infections-singer-auction.trycloudflare.com';
+  const API_BASE = 'https://promptly-skill-employer-precisely.trycloudflare.com';
 
   /**
    * Handle Admin Login

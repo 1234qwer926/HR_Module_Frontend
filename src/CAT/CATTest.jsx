@@ -36,7 +36,7 @@ export default function CATTest() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://ratio-infections-singer-auction.trycloudflare.com/cat/start/${applicationId}`, {
+      const response = await fetch(`https://promptly-skill-employer-precisely.trycloudflare.com/cat/start/${applicationId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -71,7 +71,7 @@ export default function CATTest() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://ratio-infections-singer-auction.trycloudflare.com/cat/answer', {
+      const response = await fetch('https://promptly-skill-employer-precisely.trycloudflare.com/cat/answer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

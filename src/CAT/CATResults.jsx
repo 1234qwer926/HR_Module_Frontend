@@ -21,7 +21,7 @@ export default function CATResults() {
   const fetchResults = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://ratio-infections-singer-auction.trycloudflare.com/cat/results/${applicationId}`, {
+      const response = await fetch(`https://promptly-skill-employer-precisely.trycloudflare.com/cat/results/${applicationId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

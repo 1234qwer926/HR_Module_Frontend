@@ -26,7 +26,7 @@ const ExamLogin = () => {
     setError('');
 
     try {
-      const response = await axios.post('https://ratio-infections-singer-auction.trycloudflare.com/cat/start', formData);
+      const response = await axios.post('https://promptly-skill-employer-precisely.trycloudflare.com/cat/start', formData);
 
       // Store session info with initial time (30 minutes = 1800 seconds)
       const sessionData = {

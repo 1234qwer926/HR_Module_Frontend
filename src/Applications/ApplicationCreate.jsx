@@ -92,7 +92,7 @@ export default function ApplicationCreate() {
 
   const fetchJob = async () => {
     try {
-      const response = await fetch(`http://100.25.42.222:8000/jobs/${jobId}`);
+      const response = await fetch(`https://promptly-skill-employer-precisely.trycloudflare.com/jobs/${jobId}`);
       if (response.ok) {
         const data = await response.json();
         setJob(data);
@@ -117,7 +117,7 @@ export default function ApplicationCreate() {
       const formDataUpload = new FormData();
       formDataUpload.append('file', file);
 
-      const uploadResponse = await fetch('http://100.25.42.222:8000/upload-to-s3', {
+      const uploadResponse = await fetch('https://promptly-skill-employer-precisely.trycloudflare.com/upload-to-s3', {
         method: 'POST',
         body: formDataUpload,
       });
@@ -201,7 +201,7 @@ export default function ApplicationCreate() {
 
       console.log('Submitting application:', submissionData);
 
-      const response = await fetch('http://100.25.42.222:8000/applications', {
+      const response = await fetch('https://promptly-skill-employer-precisely.trycloudflare.com/applications', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

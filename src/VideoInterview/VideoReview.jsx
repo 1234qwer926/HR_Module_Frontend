@@ -27,7 +27,7 @@ export default function VideoReview() {
   const fetchVideos = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://ratio-infections-singer-auction.trycloudflare.com/applications/${applicationId}/video-responses`, {
+      const response = await fetch(`https://promptly-skill-employer-precisely.trycloudflare.com/applications/${applicationId}/video-responses`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -61,7 +61,7 @@ export default function VideoReview() {
       const token = localStorage.getItem('token');
       const currentVideo = videos[currentVideoIndex];
 
-      const response = await fetch(`https://ratio-infections-singer-auction.trycloudflare.com/video-responses/${currentVideo.id}`, {
+      const response = await fetch(`https://promptly-skill-employer-precisely.trycloudflare.com/video-responses/${currentVideo.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +161,7 @@ export default function VideoReview() {
             <video
               controls
               style={{ width: '100%', borderRadius: 8 }}
-              src={`https://ratio-infections-singer-auction.trycloudflare.com${currentVideo.video_path}`}
+              src={`https://promptly-skill-employer-precisely.trycloudflare.com${currentVideo.video_path}`}
             />
           </Paper>
 

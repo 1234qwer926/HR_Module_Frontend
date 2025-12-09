@@ -38,7 +38,7 @@ import {
     IconDeviceFloppy,
 } from "@tabler/icons-react";
 
-const API_BASE_URL = "https://ratio-infections-singer-auction.trycloudflare.com";
+const API_BASE_URL = "https://promptly-skill-employer-precisely.trycloudflare.com";
 
 const HRVideoExamEvaluation = () => {
     // ============================================================
