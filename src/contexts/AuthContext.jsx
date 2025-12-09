@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
     console.log('🔧 Setting up Axios interceptors...');
 
     // Configure axios defaults
-    axios.defaults.baseURL = 'http://100.25.42.222:8000';
+    axios.defaults.baseURL = 'https://ratio-infections-singer-auction.trycloudflare.com';
     axios.defaults.withCredentials = true;
 
     // Add request interceptor to add Authorization header

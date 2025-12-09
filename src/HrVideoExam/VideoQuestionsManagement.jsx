@@ -44,7 +44,7 @@ import {
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 
-const API_BASE_URL = 'http://100.25.42.222:8000';
+const API_BASE_URL = 'https://ratio-infections-singer-auction.trycloudflare.com';
 
 const VideoQuestionsManagement = () => {
   // State Management

@@ -19,7 +19,7 @@ export default function JobList() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      let url = 'http://100.25.42.222:8000/jobs';
+      let url = 'https://ratio-infections-singer-auction.trycloudflare.com/jobs';
       const params = new URLSearchParams();
 
       if (filterStatus && filterStatus !== 'all') {

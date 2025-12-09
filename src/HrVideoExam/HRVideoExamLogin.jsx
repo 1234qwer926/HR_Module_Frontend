@@ -42,7 +42,7 @@ import SpeechRecognition, {
 import * as faceapi from "face-api.js";
 import Webcam from "react-webcam";
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "https://ratio-infections-singer-auction.trycloudflare.com";
 
 const HRVideoExamLogin = () => {
   // ============================================================
@@ -366,7 +366,7 @@ const HRVideoExamLogin = () => {
       console.error("Login error:", err);
       setError(
         err.response?.data?.detail ||
-          "Invalid email or exam key. Please try again."
+        "Invalid email or exam key. Please try again."
       );
     } finally {
       setLoading(false);
@@ -421,7 +421,7 @@ const HRVideoExamLogin = () => {
         const url = URL.createObjectURL(blob);
 
         const currentQuestion = questions[currentQuestionIndex];
-        
+
         // ✅ UPDATED: Use transcript for both fields
         const questionData = {
           id: Date.now(),
@@ -661,7 +661,7 @@ const HRVideoExamLogin = () => {
       console.error("Submission error:", err);
       setError(
         err.response?.data?.detail ||
-          "Failed to submit responses. Please try again."
+        "Failed to submit responses. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -1236,7 +1236,7 @@ const HRVideoExamLogin = () => {
           withCloseButton={false}
           centered
           size="sm"
-          onClose={() => {}}
+          onClose={() => { }}
         >
           <Center py="xl">
             <Stack align="center">

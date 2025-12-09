@@ -263,7 +263,7 @@ export default function JobApplications() {
       }, 500);
 
       // ✅ No query parameters - job_id in body
-      const url = `http://100.25.42.222:8000/applications/bulk-upload?job_id=${id}`;
+      const url = `https://ratio-infections-singer-auction.trycloudflare.com/applications/bulk-upload?job_id=${id}`;
 
       const res = await fetch(url, {
         method: 'POST',

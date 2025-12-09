@@ -12,7 +12,7 @@
 import axios from 'axios';
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://100.25.42.222:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ratio-infections-singer-auction.trycloudflare.com';
 
 // Create axios instance
 const apiClient = axios.create({
