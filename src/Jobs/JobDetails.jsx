@@ -887,13 +887,14 @@ export default function JobDetails() {
 
 
             {job.status === 'open' && (
-              <Button
-                size="lg"
-                onClick={() => navigate(`/apply/${job.id}`)}
-                color="green"
-              >
-                Apply Now
-              </Button>
+              console.log("job")
+              // <Button
+              //   size="lg"
+              //   onClick={() => navigate(`/apply/${job.id}`)}
+              //   color="green"
+              // >
+              //   Apply Now
+              // </Button>
             )}
 
             {job.status === 'closed' && (

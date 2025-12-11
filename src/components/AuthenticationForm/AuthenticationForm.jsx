@@ -100,20 +100,20 @@ export function AuthenticationForm() {
   /**
    * Handle Demo/Test Login
    */
-  const handleDemoLogin = () => {
-    const demoData = {
-      access_token: 'demo-jwt-token-for-testing',
-      token_type: 'bearer',
-      role: 'hr',
-      email: 'admin@pulsepharma.com',
-      expires_in: 604800
-    };
+  // const handleDemoLogin = () => {
+    // const demoData = {
+      // access_token: 'demo-jwt-token-for-testing',
+      // token_type: 'bearer',
+      // role: 'hr',
+      // email: 'admin@pulsepharma.com',
+      // expires_in: 604800
+//     // };
 
-    localStorage.setItem('demo_mode', 'true');
-    login(demoData);
-    console.log('⚠️ Demo mode enabled - not using backend');
-    navigate('/hr/dashboard');
-  };
+    // localStorage.setItem('demo_mode', 'true');
+    // login(demoData);
+    // console.log('⚠️ Demo mode enabled - not using backend');
+  //   // navigate('/hr/dashboard');
+  // };
 
   return (
     <div style={styles.container}>
@@ -170,9 +170,9 @@ export function AuthenticationForm() {
               disabled
               title="Admin email is pre-configured from .env"
             />
-            <small style={{ color: '#7f8c8d', marginTop: '4px', display: 'block' }}>
+            {/* <small style={{ color: '#7f8c8d', marginTop: '4px', display: 'block' }}>
               Pre-configured from .env (ADMIN_EMAIL)
-            </small>
+            </small> */}
           </div>
 
           {/* Password Input */}
@@ -192,9 +192,9 @@ export function AuthenticationForm() {
               autoFocus
               disabled={loading}
             />
-            <small style={{ color: '#7f8c8d', marginTop: '4px', display: 'block' }}>
+            {/* <small style={{ color: '#7f8c8d', marginTop: '4px', display: 'block' }}>
               Password stored securely in .env (ADMIN_PASSWORD)
-            </small>
+            </small> */}
           </div>
 
           {/* Submit Button */}
@@ -227,7 +227,7 @@ export function AuthenticationForm() {
         </div>
 
         {/* DEMO BUTTON */}
-        <button
+        {/* <button
           style={styles.buttonSecondary}
           onClick={handleDemoLogin}
           disabled={loading}
@@ -235,52 +235,9 @@ export function AuthenticationForm() {
         >
           <span style={{ display: 'inline-block', marginRight: '8px' }}>🎬</span>
           Demo Mode (Testing)
-        </button>
+        </button> */}
 
-        {/* FOOTER INFO */}
-        <div style={styles.footer}>
-          <div style={styles.infoBox}>
-            <h4 style={{ margin: '0 0 8px 0', color: '#134252' }}>🔑 Credentials</h4>
-            <p style={{ margin: '4px 0', fontSize: '13px', color: '#626c71' }}>
-              Email: admin@pulsepharma.com
-            </p>
-            <p style={{ margin: '4px 0', fontSize: '13px', color: '#626c71' }}>
-              Password: pavan@123
-            </p>
-          </div>
 
-          <div style={styles.infoBox}>
-            <h4 style={{ margin: '0 0 8px 0', color: '#134252' }}>🍪 Cookies</h4>
-            <p style={{ margin: '4px 0', fontSize: '13px', color: '#626c71' }}>
-              ✓ 3 cookies set for 7 days
-            </p>
-            <p style={{ margin: '4px 0', fontSize: '13px', color: '#626c71' }}>
-              ✓ Token auto-sent with all requests
-            </p>
-          </div>
-
-          <div style={styles.infoBox}>
-            <h4 style={{ margin: '0 0 8px 0', color: '#134252' }}>📋 System</h4>
-            <p style={{ margin: '4px 0', fontSize: '13px', color: '#626c71' }}>
-              ✓ Single admin (no user table)
-            </p>
-            <p style={{ margin: '4px 0', fontSize: '13px', color: '#626c71' }}>
-              ✓ JWT + 7-day cookie auth
-            </p>
-          </div>
-        </div>
-
-        {/* SECURITY NOTE */}
-        <div style={styles.securityNote}>
-          <strong>🔒 Security Note:</strong>
-          <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '12px', color: '#7f8c8d' }}>
-            <li>Credentials stored in .env file (not in code)</li>
-            <li>JWT token expires after 24 hours</li>
-            <li>Cookies expire after 7 days</li>
-            <li>Use HTTPS in production (secure=True)</li>
-            <li>Never commit .env to version control</li>
-          </ul>
-        </div>
       </div>
 
       {/* CSS Animations */}
