@@ -28,13 +28,37 @@ const ExamLogin = () => {
     try {
       const response = await axios.post('https://promptly-skill-employer-precisely.trycloudflare.com/cat/start', formData);
 
-      // Store session info with initial time (30 minutes = 1800 seconds)
-      const sessionData = {
-        ...response.data,
-        time_left: 30 * 60, // 30 minutes in seconds
-        items_completed: 0,
-        current_theta: 0.0
-      };
+      // ✅ CRITICAL FIX: Check if session exists in localStorage first
+      const existingSession = JSON.parse(localStorage.getItem('cat_session') || 'null');
+      
+      let sessionData;
+      
+      if (existingSession && existingSession.session_id === response.data.session_id) {
+        // ✅ RESUME EXISTING SESSION - USE SAVED TIME AND PROGRESS
+        console.log('✓ Resuming existing session:', {
+          session_id: existingSession.session_id,
+          saved_time: existingSession.time_left,
+          items_completed: existingSession.items_completed
+        });
+        
+        sessionData = {
+          ...response.data,
+          time_left: existingSession.time_left || 30 * 60, // Use saved time or default
+          items_completed: existingSession.items_completed || 0,
+          current_theta: existingSession.current_theta || 0.0,
+          items_remaining: existingSession.items_remaining || 20
+        };
+      } else {
+        // ✅ NEW SESSION - USE DEFAULT VALUES
+        console.log('✓ Starting new session with default values');
+        sessionData = {
+          ...response.data,
+          time_left: 30 * 60, // 30 minutes in seconds
+          items_completed: 0,
+          current_theta: 0.0,
+          items_remaining: 20
+        };
+      }
 
       localStorage.setItem('cat_session', JSON.stringify(sessionData));
 
@@ -124,10 +148,11 @@ const ExamLogin = () => {
         <div className="exam-info">
           <h3>Exam Information</h3>
           <ul>
-            <li>📝 Adaptive test with 10-30 questions</li>
+            <li>📝 20 questions total</li>
             <li>⏱️ 30 minutes time limit</li>
             <li>🎯 Difficulty adjusts based on your performance</li>
             <li>⚠️ You cannot go back to previous questions</li>
+            <li>💾 Progress is automatically saved</li>
           </ul>
         </div>
       </div>
