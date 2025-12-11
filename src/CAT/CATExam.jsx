@@ -1011,7 +1011,7 @@ const CATExam = () => {
                   <li>⏱️ <strong>Time Limit:</strong> You have 30 minutes to complete 30 questions.</li>
                   <li>⚠️ Do not refresh the page or close the browser.</li>
                 </ul>
-                <p style={{ marginTop: '15px', fontWeight: 'bold', color: '#d9534f' }}>
+                <p style={{ marginTop: '15px', fontWeight: 'bold', color: '#eee7e7ff' }}>
                   Clicking "Start Exam Now" will begin the timer immediately.
                 </p>
               </div>
@@ -1168,7 +1168,7 @@ const CATExam = () => {
             <div className="progress-bar-container">
               <div className="progress-bar-fill" style={{ width: `${progressPercentage}%` }}></div>
             </div>
-            <span className="stat-value small" style={{ color: '#ffffffff' }}>{stats.itemsCompleted} / 30</span>
+            <span className="stat-value small" style={{ color: '#ffffffff' }}>{stats.itemsCompleted} / 20</span>
           </div>
         </div>
       </div>
