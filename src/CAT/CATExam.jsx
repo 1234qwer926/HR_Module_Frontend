@@ -634,7 +634,7 @@ const CATExam = () => {
               const warningTime = (FACE_DETECTION_CONFIG.WARNING_THRESHOLD * FACE_DETECTION_CONFIG.DETECTION_INTERVAL) / 1000;
               setFaceWarnings(prev => {
                 const newWarnings = prev + 1;
-                showWarning(`⚠️ Warning ${newWarnings}: Face not detected for ${warningTime} seconds. Please ensure your face is visible.`);
+                showWarning(`⚠️ Warning ${newWarnings}: Face not detected. Please ensure your face is visible.`);
                 return newWarnings;
               });
               consecutiveNoFaceFrames = 0;
@@ -861,7 +861,10 @@ const CATExam = () => {
         hasStream: !!videoRef.current?.srcObject
       });
 
-      if (response.data.should_continue) {
+      // UPDATED: Check if this is the last question (20)
+      if (currentItem.item_number === 20) {
+        setTimeout(() => completeExam(sessionData.session_id), 1500);
+      } else if (response.data.should_continue) {
         setTimeout(() => {
           console.log('[SUBMIT] Fetching next item');
           fetchNextItem(sessionData.session_id);
@@ -1008,7 +1011,7 @@ const CATExam = () => {
                   <li>✅ Camera is active and monitoring.</li>
                   <li>✅ Screen sharing is active and monitoring.</li>
                   <li>✅ Fullscreen mode will activate automatically.</li>
-                  <li>⏱️ <strong>Time Limit:</strong> You have 30 minutes to complete 30 questions.</li>
+                  <li>⏱️ <strong>Time Limit:</strong> You have 30 minutes to complete 20 questions.</li>
                   <li>⚠️ Do not refresh the page or close the browser.</li>
                 </ul>
                 <p style={{ marginTop: '15px', fontWeight: 'bold', color: '#eee7e7ff' }}>
@@ -1041,7 +1044,7 @@ const CATExam = () => {
   const showLoadingOverlay = loading || !currentItem;
 
   const optionsArray = ['A', 'B', 'C', 'D'];
-  const progressPercentage = (stats.itemsCompleted / 30) * 100;
+  const progressPercentage = (stats.itemsCompleted / 20) * 100;
   const timerColor = timeLeft < 300 ? '#ff4444' : '#2c3e50';
 
   return (
@@ -1197,9 +1200,24 @@ const CATExam = () => {
               ))}
             </div>
 
-            <button className="submit-answer-button" onClick={submitAnswer} disabled={!selectedOption || submitting}>
-              {submitting ? 'Submitting...' : 'Submit Answer'}
-            </button>
+            {/* UPDATED: Conditional button based on question number */}
+            {currentItem.item_number === 20 ? (
+              <button 
+                className="submit-answer-button" 
+                onClick={submitAnswer} 
+                disabled={!selectedOption || submitting}
+              >
+                {submitting ? 'Completing...' : 'Complete Exam'}
+              </button>
+            ) : (
+              <button 
+                className="submit-answer-button" 
+                onClick={submitAnswer} 
+                disabled={!selectedOption || submitting}
+              >
+                {submitting ? 'Submitting...' : 'Submit Answer'}
+              </button>
+            )}
           </div>
         </div>
       )}

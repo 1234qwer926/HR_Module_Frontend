@@ -70,14 +70,14 @@ const ExamComplete = () => {
           </div>
 
           <div className="results-grid">
-            <div className="result-item">
+            {/* <div className="result-item">
               <div className="result-icon">📊</div>
               <div className="result-label">Percentile</div>
               <div className="result-value">{results.percentile.toFixed(1)}%</div>
               <div className="result-description">
                 {getPercentileDescription(results.percentile)}
               </div>
-            </div>
+            </div> */}
 
             <div className="result-item">
               <div className="result-icon">🎯</div>
