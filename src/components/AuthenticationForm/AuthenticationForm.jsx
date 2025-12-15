@@ -14,7 +14,7 @@ export function AuthenticationForm() {
     password: ''
   });
 
-  const API_BASE = 'https://promptly-skill-employer-precisely.trycloudflare.com';
+  const API_BASE = 'https://internship-produce-romantic-employees.trycloudflare.com';
 
   /**
    * Handle Admin Login

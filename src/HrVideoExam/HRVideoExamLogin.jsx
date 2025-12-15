@@ -42,7 +42,7 @@ import SpeechRecognition, {
 import * as faceapi from "face-api.js";
 import Webcam from "react-webcam";
 
-const API_BASE_URL = "https://promptly-skill-employer-precisely.trycloudflare.com";
+const API_BASE_URL = "https://internship-produce-romantic-employees.trycloudflare.com";
 
 const HRVideoExamLogin = () => {
   // ============================================================

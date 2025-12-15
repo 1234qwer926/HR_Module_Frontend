@@ -19,7 +19,7 @@ export default function JobList() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      let url = 'https://promptly-skill-employer-precisely.trycloudflare.com/jobs';
+      let url = 'https://internship-produce-romantic-employees.trycloudflare.com/jobs';
       const params = new URLSearchParams();
 
       if (filterStatus && filterStatus !== 'all') {

@@ -26,7 +26,7 @@ const ExamLogin = () => {
     setError('');
 
     try {
-      const response = await axios.post('https://promptly-skill-employer-precisely.trycloudflare.com/cat/start', formData);
+      const response = await axios.post('https://internship-produce-romantic-employees.trycloudflare.com/cat/start', formData);
 
       // ✅ CRITICAL FIX: Check if session exists in localStorage first
       const existingSession = JSON.parse(localStorage.getItem('cat_session') || 'null');
