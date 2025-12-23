@@ -25,7 +25,7 @@ function FileUploadComponent() {
     try {
       // --- START OF UPDATE 1 ---
       // Switched to axios and added withCredentials
-      const response = await axios.post('https://internship-produce-romantic-employees.trycloudflare.com/upload', formData, {
+      const response = await axios.post('https://mails-split-sec-units.trycloudflare.com/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -54,7 +54,7 @@ function FileUploadComponent() {
     try {
       // --- START OF UPDATE 2 ---
       // Switched to axios and added withCredentials
-      const response = await axios.get(`https://internship-produce-romantic-employees.trycloudflare.com/generate-presigned-url/${fileKey}`, {
+      const response = await axios.get(`https://mails-split-sec-units.trycloudflare.com/generate-presigned-url/${fileKey}`, {
         withCredentials: true,
       });
       // --- END OF UPDATE 2 ---

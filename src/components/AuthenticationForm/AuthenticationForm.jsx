@@ -14,7 +14,7 @@ export function AuthenticationForm() {
     password: ''
   });
 
-  const API_BASE = 'https://internship-produce-romantic-employees.trycloudflare.com';
+  const API_BASE = 'https://mails-split-sec-units.trycloudflare.com';
 
   /**
    * Handle Admin Login

@@ -263,7 +263,7 @@ export default function JobApplications() {
       }, 500);
 
       // ✅ No query parameters - job_id in body
-      const url = `https://internship-produce-romantic-employees.trycloudflare.com/applications/bulk-upload?job_id=${id}`;
+      const url = `https://mails-split-sec-units.trycloudflare.com/applications/bulk-upload?job_id=${id}`;
 
       const res = await fetch(url, {
         method: 'POST',

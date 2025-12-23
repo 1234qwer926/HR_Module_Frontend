@@ -39,7 +39,7 @@ import {
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 
-const API_BASE_URL = 'https://internship-produce-romantic-employees.trycloudflare.com';
+const API_BASE_URL = 'https://mails-split-sec-units.trycloudflare.com';
 
 const CATManagement = () => {
   // State Management
