@@ -111,6 +111,7 @@ const HRVideoExamLogin = () => {
 
   // Submission
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showManualClose, setShowManualClose] = useState(false);
 
   // Video Constraints
   const videoConstraints = {
@@ -139,7 +140,10 @@ const HRVideoExamLogin = () => {
   };
 
   const calculateTotalExamTime = (questionsArray) => {
-    const totalSeconds = questionsArray.reduce((sum, q) => sum + (q.duration_seconds || 0), 0);
+    const totalSeconds = questionsArray.reduce(
+      (sum, q) => sum + (q.duration_seconds || 0),
+      0
+    );
     const totalMinutes = Math.ceil(totalSeconds / 60);
     const roundedMinutes = Math.ceil(totalMinutes / 5) * 5;
     return roundedMinutes * 60;
@@ -172,22 +176,28 @@ const HRVideoExamLogin = () => {
   // INITIALIZATION & FACE DETECTION MODELS
   // ============================================================
 
-  // Check browser support on mount
   useEffect(() => {
-    // Check if Web Speech API is available
-    const hasSpeechRecognition = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
-    
+    const hasSpeechRecognition =
+      "webkitSpeechRecognition" in window || "SpeechRecognition" in window;
+
     console.log("🔍 Checking speech recognition support...");
-    console.log("  - browserSupportsSpeechRecognition:", browserSupportsSpeechRecognition);
-    console.log("  - webkitSpeechRecognition in window:", 'webkitSpeechRecognition' in window);
-    console.log("  - SpeechRecognition in window:", 'SpeechRecognition' in window);
+    console.log(
+      "  - browserSupportsSpeechRecognition:",
+      browserSupportsSpeechRecognition
+    );
+    console.log(
+      "  - webkitSpeechRecognition in window:",
+      "webkitSpeechRecognition" in window
+    );
+    console.log("  - SpeechRecognition in window:", "SpeechRecognition" in window);
     console.log("  - User Agent:", navigator.userAgent);
-    
+
     if (!browserSupportsSpeechRecognition || !hasSpeechRecognition) {
       console.error("❌ Speech recognition NOT supported in this browser");
       notifications.show({
         title: "Browser Not Supported",
-        message: "Please use Chrome or Edge for speech recognition. Safari and Firefox are not supported.",
+        message:
+          "Please use Chrome or Edge for speech recognition. Safari and Firefox are not supported.",
         color: "red",
         autoClose: false,
       });
@@ -196,7 +206,6 @@ const HRVideoExamLogin = () => {
     }
   }, [browserSupportsSpeechRecognition]);
 
-  // Log transcript changes for debugging
   useEffect(() => {
     transcriptRef.current = transcript;
     if (transcript && transcript.length > 0) {
@@ -232,7 +241,6 @@ const HRVideoExamLogin = () => {
     };
   }, []);
 
-  // Face detection loop
   useEffect(() => {
     if (modelsLoaded && stage === "exam") {
       const detectFaces = async () => {
@@ -384,18 +392,20 @@ const HRVideoExamLogin = () => {
   const startRecording = async () => {
     try {
       console.log("🎬 Starting recording process...");
-      console.log("Browser supports speech recognition:", browserSupportsSpeechRecognition);
-      
-      // Check browser support first
+      console.log(
+        "Browser supports speech recognition:",
+        browserSupportsSpeechRecognition
+      );
+
       if (!browserSupportsSpeechRecognition) {
-        throw new Error("Speech recognition not supported. Please use Chrome or Edge.");
+        throw new Error(
+          "Speech recognition not supported. Please use Chrome or Edge."
+        );
       }
 
-      // Reset transcript first
       resetTranscript();
       console.log("🔄 Transcript reset");
-      
-      // Request microphone permission explicitly first
+
       console.log("🎤 Requesting microphone access...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
@@ -403,23 +413,23 @@ const HRVideoExamLogin = () => {
       });
       console.log("✅ Microphone access granted");
       console.log("📊 Audio tracks:", stream.getAudioTracks().length);
-      console.log("📊 Audio track settings:", stream.getAudioTracks()[0]?.getSettings());
+      console.log(
+        "📊 Audio track settings:",
+        stream.getAudioTracks()[0]?.getSettings()
+      );
 
-      // IMPORTANT: Start speech recognition AFTER we confirm mic access
-      // and BEFORE we start the MediaRecorder
       console.log("🎤 Starting speech recognition...");
       try {
-        SpeechRecognition.startListening({ 
-          continuous: true, 
-          language: "en-US"
+        SpeechRecognition.startListening({
+          continuous: true,
+          language: "en-US",
         });
         console.log("✅ Speech recognition startListening called");
       } catch (speechErr) {
         console.error("❌ Error starting speech recognition:", speechErr);
       }
-      
-      // Wait longer for speech recognition to initialize
-      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       console.log("🎤 After 1s delay - listening state:", listening);
       console.log("🎤 Current transcript:", transcript);
 
@@ -428,7 +438,7 @@ const HRVideoExamLogin = () => {
         audioBitsPerSecond: 128000,
         videoBitsPerSecond: 2500000,
       });
-      
+
       const chunks = [];
 
       mediaRecorder.ondataavailable = (event) => {
@@ -439,16 +449,14 @@ const HRVideoExamLogin = () => {
       };
 
       mediaRecorder.onstop = () => {
-        // ✅ FIX: Use transcriptRef.current instead of transcript
-        // This ensures we capture the actual transcript, not the stale closure value
         const finalTranscript = transcriptRef.current || "";
         console.log("🛑 Recording stopped");
         console.log("📝 Final transcript:", finalTranscript);
         console.log("📝 Transcript length:", finalTranscript.length);
         console.log("📝 Listening state at stop:", listening);
-        
+
         SpeechRecognition.stopListening();
-        
+
         const blob = new Blob(chunks, { type: "video/webm" });
         const url = URL.createObjectURL(blob);
         const currentQuestion = questions[currentQuestionIndex];
@@ -470,12 +478,15 @@ const HRVideoExamLogin = () => {
         setRecordedAnswers((prev) => [...prev, questionData]);
         setIsRecording(false);
 
-        const wordCount = finalTranscript.split(' ').filter(w => w.length > 0).length;
-        
+        const wordCount = finalTranscript
+          .split(" ")
+          .filter((w) => w.length > 0).length;
+
         if (!finalTranscript || finalTranscript.length === 0) {
           notifications.show({
             title: "⚠️ No Transcript Captured",
-            message: "Speech recognition may not be working. Check browser permissions and try Chrome/Edge.",
+            message:
+              "Speech recognition may not be working. Check browser permissions and try Chrome/Edge.",
             color: "orange",
             autoClose: 8000,
           });
@@ -504,21 +515,23 @@ const HRVideoExamLogin = () => {
         color: "blue",
         autoClose: 3000,
       });
-      
+
       console.log("✅ Recording setup complete");
-      
-      // Log periodic updates
+
       const debugInterval = setInterval(() => {
-        console.log("⏰ Periodic check - listening:", listening, "| transcript length:", transcript?.length || 0);
+        console.log(
+          "⏰ Periodic check - listening:",
+          listening,
+          "| transcript length:",
+          transcript?.length || 0
+        );
       }, 3000);
-      
-      // Clean up debug interval when recording stops
+
       const originalStop = mediaRecorder.onstop;
       mediaRecorder.onstop = () => {
         clearInterval(debugInterval);
         originalStop();
       };
-      
     } catch (err) {
       console.error("❌ Recording error:", err);
       setError("Unable to access camera/microphone. Please check permissions.");
@@ -556,7 +569,11 @@ const HRVideoExamLogin = () => {
   // ============================================================
 
   useEffect(() => {
-    if (stage === "exam" && questions.length > 0 && currentQuestionIndex < questions.length) {
+    if (
+      stage === "exam" &&
+      questions.length > 0 &&
+      currentQuestionIndex < questions.length
+    ) {
       const currentQuestion = questions[currentQuestionIndex];
       setTimeLeft(currentQuestion.duration_seconds || 0);
 
@@ -664,7 +681,7 @@ const HRVideoExamLogin = () => {
   };
 
   // ============================================================
-  // SUBMISSION HANDLER
+  // SUBMISSION HANDLER (UPDATED)
   // ============================================================
 
   const submitExam = async () => {
@@ -672,6 +689,18 @@ const HRVideoExamLogin = () => {
     setIsSubmitting(true);
 
     try {
+      // Show notification to user
+      notifications.show({
+        title: "📤 Submitting Your Responses",
+        message: "Please wait while we process your answers...",
+        color: "blue",
+        autoClose: false,
+        id: "submitting-exam",
+      });
+
+      // Add small delay to ensure UI updates before heavy processing
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       const batchDataWithS3Keys = await Promise.all(
         recordedAnswers.map(async (answer) => {
           let s3Key = answer.s3_key;
@@ -688,6 +717,7 @@ const HRVideoExamLogin = () => {
                 `❌ Failed to upload video for question ${answer.job_video_question_id}:`,
                 uploadErr
               );
+              notifications.hide("submitting-exam");
               notifications.show({
                 title: "❌ Upload Error",
                 message: `Failed to upload video for question ${answer.job_video_question_id}`,
@@ -718,15 +748,35 @@ const HRVideoExamLogin = () => {
 
       console.log("✅ Submission response:", submitResponse.data);
 
+      // Hide the submitting notification
+      notifications.hide("submitting-exam");
+
+      // Show success notification
+      notifications.show({
+        title: "✅ Submission Complete",
+        message: "Your exam has been successfully submitted!",
+        color: "green",
+      });
+
       setStage("completed");
       setRecordedAnswers([]);
       setCurrentQuestionIndex(0);
     } catch (err) {
       console.error("❌ Submission error:", err);
+
+      // Hide submitting notification
+      notifications.hide("submitting-exam");
+
       setError(
         err.response?.data?.detail ||
           "Failed to submit responses. Please try again."
       );
+
+      notifications.show({
+        title: "❌ Submission Failed",
+        message: "There was an error submitting your exam. Please try again.",
+        color: "red",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -736,6 +786,7 @@ const HRVideoExamLogin = () => {
   // RENDER STAGES
   // ============================================================
 
+  // LOGIN STAGE
   if (stage === "login") {
     return (
       <Box
@@ -774,7 +825,8 @@ const HRVideoExamLogin = () => {
                   style={{
                     width: 60,
                     height: 60,
-                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    background:
+                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                     borderRadius: 12,
                     display: "flex",
                     alignItems: "center",
@@ -900,7 +952,8 @@ const HRVideoExamLogin = () => {
                       fontSize: "14px",
                       fontWeight: 600,
                       transition: "all 0.3s ease",
-                      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      background:
+                        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                       color: "white",
                     }}
                     leftSection={
@@ -1159,7 +1212,8 @@ const HRVideoExamLogin = () => {
       return (
         <Container size="md" py="xl">
           <Alert color="red">
-            ❌ Speech recognition not supported. Please use Chrome or Edge browser.
+            ❌ Speech recognition not supported. Please use Chrome or Edge
+            browser.
           </Alert>
         </Container>
       );
@@ -1300,7 +1354,7 @@ const HRVideoExamLogin = () => {
                 color: "white",
                 padding: "4px 8px",
                 borderRadius: 4,
-                fontSize: "11px",
+                fontSize: 11,
                 display: "flex",
                 alignItems: "center",
                 gap: 4,
@@ -1314,7 +1368,7 @@ const HRVideoExamLogin = () => {
                   borderRadius: "50%",
                   animation: "pulse 2s infinite",
                 }}
-              ></div>
+              />
               LIVE
             </Box>
           </Box>
@@ -1331,26 +1385,22 @@ const HRVideoExamLogin = () => {
           />
         </Box>
 
+        {/* Main Exam Content */}
         <Container
           size="xl"
           py="md"
           pt={60}
-          style={{ paddingRight: showLiveVideo ? 260 : 20 }}
+          style={{
+            paddingRight: showLiveVideo ? 260 : 20,
+          }}
         >
+          {/* Question Title */}
           <Title order={3} mb="md" ta="center">
             {jobTitle}
           </Title>
 
-          {/* Question Timer - Using API duration */}
-          <Card
-            shadow="sm"
-            p="xs"
-            radius="md"
-            mb="lg"
-            style={{
-              background: timeLeft <= 30 ? "#fff5f5" : "#f8f9fa",
-            }}
-          >
+          {/* Question Timer */}
+          <Card shadow="sm" p="xs" radius="md" mb="lg">
             <Group justify="center">
               <IconClock
                 size={18}
@@ -1361,53 +1411,46 @@ const HRVideoExamLogin = () => {
                 weight={700}
                 color={timeLeft <= 30 ? "red" : "blue"}
               >
-                ⏱️ Question Timer: {formatTime(timeLeft)}
+                Question Timer: {formatTime(timeLeft)}
               </Text>
             </Group>
           </Card>
 
-          {/* Progress */}
+          {/* Progress Bar */}
           <Card shadow="sm" p="sm" radius="md" mb="lg">
             <Group justify="space-between" mb="xs">
               <Text size="sm" weight={500}>
-                📊 Progress
+                Progress
               </Text>
               <Text size="sm" color="dimmed">
                 {progressPercentage}%
               </Text>
             </Group>
-            <Progress
-              value={progressPercentage}
-              color="blue"
-              label={`${progressPercentage}%`}
-            />
+            <Progress value={progressPercentage} color="blue" label={progressPercentage} />
           </Card>
 
           {/* Question Card */}
           <Card shadow="lg" p="xl" radius="md" mb="lg">
             <Group justify="space-between" mb="md">
-              <Title order={4}>❓ Question {currentQuestionIndex + 1}</Title>
+              <Title order={4}>
+                Question {currentQuestionIndex + 1}
+              </Title>
               <Badge color="blue" size="lg">
                 {currentQuestionIndex + 1} of {questions.length}
               </Badge>
             </Group>
-
             <Text size="lg" mb="md" style={{ lineHeight: 1.8 }}>
               {currentQuestion.question_text}
             </Text>
-
             <Divider my="lg" />
 
             {/* Recording Section */}
-            <Box
-              p="xl"
-              style={{
-                border: "2px dashed #dee2e6",
-                borderRadius: 12,
-                textAlign: "center",
-                background: "#f8f9fa",
-              }}
-            >
+            <Box p="xl" style={{
+              border: "2px dashed #dee2e6",
+              borderRadius: 12,
+              textAlign: "center",
+              background: "#f8f9fa",
+            }}>
               <IconVideo
                 size={56}
                 color="#868e96"
@@ -1415,116 +1458,81 @@ const HRVideoExamLogin = () => {
               />
               {isAnswered && (
                 <Badge color="green" size="lg" mb="lg">
-                  <IconCheck size={14} /> ✓ Answer Recorded
+                  <IconCheck size={14} /> Answer Recorded
                 </Badge>
               )}
 
-              {/* Live Transcript - Always Visible When Recording */}
+              {/* Live Transcript */}
               {isRecording && (
-                <>
-                  <Box
-                    mt="lg"
-                    p="md"
-                    style={{
-                      border: "2px solid #667eea",
-                      borderRadius: 8,
-                      background: "#f0f4ff",
-                      minHeight: "120px",
-                    }}
-                  >
-                    <Group mb="xs" justify="space-between">
-                      <Group gap="xs">
-                        <IconMicrophone size={18} color="#667eea" />
-                        <Text size="sm" weight={600} c="#667eea">
-                          🔴 LIVE TRANSCRIPTION
-                        </Text>
-                      </Group>
-                      <Badge 
-                        color={listening ? "green" : "orange"}
-                        variant="dot"
-                        size="sm"
-                      >
-                        {listening ? "🎤 Listening" : "⏳ Initializing"}
-                      </Badge>
+                <Box mt="lg" p="md" style={{
+                  border: "2px solid #667eea",
+                  borderRadius: 8,
+                  background: "#f0f4ff",
+                  minHeight: 120,
+                }}>
+                  <Group mb="xs" justify="space-between">
+                    <Group gap="xs">
+                      <IconMicrophone size={18} color="#667eea" />
+                      <Text size="sm" weight={600} c="#667eea">
+                        LIVE TRANSCRIPTION
+                      </Text>
                     </Group>
-                    <Box
-                      style={{
-                        minHeight: "80px",
-                        padding: "12px",
-                        background: "white",
-                        borderRadius: "6px",
-                        border: "1px solid #e0e0e0",
-                      }}
+                    <Badge
+                      color={listening ? "green" : "orange"}
+                      variant="dot"
+                      size="sm"
                     >
-                      {transcript && transcript.length > 0 ? (
-                        <Text
-                          color="#333"
-                          size="md"
-                          style={{ 
-                            lineHeight: "1.6",
-                            wordWrap: "break-word",
-                            whiteSpace: "pre-wrap",
-                          }}
-                        >
-                          {transcript}
-                        </Text>
-                      ) : (
-                        <Text
-                          color="#999"
-                          size="md"
-                          style={{ 
-                            fontStyle: "italic",
-                            lineHeight: "1.6",
-                          }}
-                        >
-                          {listening 
-                            ? "🎤 Listening... Start speaking into your microphone..."
-                            : "⏳ Initializing microphone... Please speak after it turns green..."}
-                        </Text>
-                      )}
-                    </Box>
-                    {transcript && transcript.length > 0 && (
-                      <Group justify="space-between" mt="xs">
-                        <Text size="xs" c="dimmed">
-                          📝 {transcript.split(' ').filter(w => w.length > 0).length} words
-                        </Text>
-                        <Text size="xs" c="green" weight={600}>
-                          ✓ Capturing
-                        </Text>
-                      </Group>
+                      {listening ? "Listening" : "Initializing"}
+                    </Badge>
+                  </Group>
+                  <Box style={{
+                    minHeight: 80,
+                    padding: 12,
+                    background: "white",
+                    borderRadius: 6,
+                    border: "1px solid #e0e0e0",
+                  }}>
+                    {transcript && transcript.length > 0 ? (
+                      <Text
+                        c="#333"
+                        size="md"
+                        style={{
+                          lineHeight: 1.6,
+                          wordWrap: "break-word",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {transcript}
+                      </Text>
+                    ) : (
+                      <Text
+                        c="#999"
+                        size="md"
+                        style={{
+                          fontStyle: "italic",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {listening
+                          ? "Listening... Start speaking into your microphone..."
+                          : "Initializing microphone... Please speak after it turns green..."}
+                      </Text>
                     )}
                   </Box>
-
-                  {/* Debug Info */}
-                  <Alert color="blue" variant="light" mt="sm">
-                    <Text size="xs">
-                      <strong>🐛 Debug:</strong> Browser Support: {browserSupportsSpeechRecognition ? "✓ Yes" : "✗ No"} | 
-                      Listening: {listening ? "✓ Yes" : "✗ No"} | 
-                      Transcript Length: {transcript?.length || 0} chars
-                    </Text>
-                  </Alert>
-                  
-                  {/* Troubleshooting Alert */}
-                  {!listening && (
-                    <Alert color="orange" variant="filled" mt="sm">
-                      <Text size="sm" weight={600} mb="xs">
-                        ⚠️ Speech Recognition Not Active
+                  {transcript && transcript.length > 0 && (
+                    <Group justify="space-between" mt="xs">
+                      <Text size="xs" c="dimmed">
+                        {transcript.split(" ").filter((w) => w.length > 0).length} words
                       </Text>
-                      <Text size="xs">
-                        <strong>Troubleshooting Steps:</strong><br/>
-                        1. Make sure you're using <strong>Chrome or Edge</strong> browser<br/>
-                        2. Check if microphone permissions are granted (look for 🎤 icon in address bar)<br/>
-                        3. Try speaking louder or closer to your microphone<br/>
-                        4. Stop and restart the recording<br/>
-                        5. Reload the page and try again<br/>
-                        <br/>
-                        <strong>Note:</strong> Safari and Firefox don't support Web Speech API
+                      <Text size="xs" c="green" weight={600}>
+                        Capturing
                       </Text>
-                    </Alert>
+                    </Group>
                   )}
-                </>
+                </Box>
               )}
 
+              {/* Recording Buttons */}
               <Center mt="xl">
                 {isRecording ? (
                   <Button
@@ -1533,34 +1541,30 @@ const HRVideoExamLogin = () => {
                     size="xl"
                     leftSection={<IconPlayerStop size={20} />}
                   >
-                    ⏹️ Stop Recording ({formatTime(recordingTime)})
+                    Stop Recording ({formatTime(recordingTime)})
                   </Button>
                 ) : (
-                  <>
-                    <Button
-                      onClick={startRecording}
-                      color="blue"
-                      size="xl"
-                      leftSection={<IconPlayerPlay size={20} />}
-                      disabled={isAnswered}
-                    >
-                      {isAnswered
-                        ? "✓ Answer Recorded"
-                        : "🎤 Start Recording"}
-                    </Button>
-                    {isAnswered && (
-                      <Button
-                        onClick={deleteRecording}
-                        color="red"
-                        variant="light"
-                        size="sm"
-                        ml="md"
-                        leftSection={<IconTrash size={16} />}
-                      >
-                        🔄 Re-record
-                      </Button>
-                    )}
-                  </>
+                  <Button
+                    onClick={startRecording}
+                    color="blue"
+                    size="xl"
+                    leftSection={<IconPlayerPlay size={20} />}
+                    disabled={isAnswered}
+                  >
+                    {isAnswered ? "Answer Recorded" : "Start Recording"}
+                  </Button>
+                )}
+                {isAnswered && (
+                  <Button
+                    onClick={deleteRecording}
+                    color="red"
+                    variant="light"
+                    size="sm"
+                    ml="md"
+                    leftSection={<IconTrash size={16} />}
+                  >
+                    Re-record
+                  </Button>
                 )}
               </Center>
             </Box>
@@ -1570,11 +1574,11 @@ const HRVideoExamLogin = () => {
           <Card shadow="sm" p="lg" radius="md" style={{ background: "#f8f9fa" }}>
             <Group justify="space-between">
               <Text size="sm" color="dimmed">
-                📋 Question {currentQuestionIndex + 1} of {questions.length}
+                Question {currentQuestionIndex + 1} of {questions.length}
               </Text>
               {!isLastQuestion ? (
                 <Button onClick={handleNextQuestion} size="lg" color="blue">
-                  Next Question →
+                  Next Question
                 </Button>
               ) : (
                 <Button
@@ -1583,31 +1587,40 @@ const HRVideoExamLogin = () => {
                   color="green"
                   disabled={isSubmitting}
                   loading={isSubmitting}
-                  leftSection={<IconUpload size={16} />}
+                  leftSection={
+                    !isSubmitting && <IconUpload size={16} />
+                  }
                 >
-                  {isSubmitting ? "📤 Uploading to S3..." : "✓ Submit Exam"}
+                  {isSubmitting ? "⏳ Submitting, please wait..." : "✓ Submit Exam"}
                 </Button>
               )}
             </Group>
           </Card>
         </Container>
 
-        {/* Submitting Modal */}
+        {/* Submitting Modal (UPDATED) */}
         <Modal
           opened={isSubmitting}
           withCloseButton={false}
           centered
           size="sm"
           onClose={() => {}}
+          closeOnClickOutside={false}
+          closeOnEscape={false}
         >
           <Center py="xl">
-            <Stack align="center">
-              <Loader size="xl" />
+            <Stack align="center" gap="md">
+              <Loader size="xl" color="blue" />
               <Text size="lg" weight={600}>
-                📤 Submitting Exam...
+                ⏳ Submitting Your Responses
               </Text>
-              <Text size="sm" color="dimmed">
-                Uploading videos to S3 and processing your responses.
+              <Text
+                size="sm"
+                color="dimmed"
+                ta="center"
+              >
+                Please wait while we process and upload your exam answers. This may
+                take a few moments.
               </Text>
             </Stack>
           </Center>
@@ -1617,33 +1630,72 @@ const HRVideoExamLogin = () => {
   }
 
   // ============================================================
-  // COMPLETED STAGE
+  // COMPLETED STAGE (UPDATED)
   // ============================================================
 
   if (stage === "completed") {
+    // Try to close immediately on mount
+    useEffect(() => {
+      // Attempt to close the window
+      window.close();
+
+      // If window.close() fails (blocked by browser), show manual close button
+      const fallbackTimer = setTimeout(() => {
+        setShowManualClose(true);
+      }, 2000);
+
+      return () => clearTimeout(fallbackTimer);
+    }, []);
+
     return (
       <Container size="md" py="xl">
-        <Center>
-          <Stack align="center">
-            <IconCircleCheck size={64} color="green" />
-            <Title order={2}>✅ Exam Completed Successfully!</Title>
-            <Text color="dimmed">
-              Your exam has been submitted with all videos uploaded to S3.
-            </Text>
-            <Text size="sm" color="dimmed">
-              Thank you, <strong>{candidateName}</strong>! Your responses are being evaluated.
-            </Text>
-            <Button
-              onClick={() => {
-                setStage("login");
-                setEmail("");
-                setExamKey("");
-              }}
-              mt="lg"
-              size="lg"
-            >
-              Return to Login
-            </Button>
+        <Center style={{ minHeight: "60vh" }}>
+          <Stack align="center" gap="xl">
+            <IconCircleCheck size={80} color="#51cf66" />
+
+            <Stack align="center" gap="sm">
+              <Title order={2} c="green">
+                ✅ Exam Submitted Successfully!
+              </Title>
+              <Text size="lg" color="dimmed" ta="center">
+                Thank you, <strong>{candidateName}</strong>!
+              </Text>
+              <Text size="md" color="dimmed" ta="center">
+                Your responses have been recorded and are being evaluated.
+              </Text>
+            </Stack>
+
+            <Divider style={{ width: "100%" }} />
+
+            {!showManualClose ? (
+              <Group>
+                <Loader size="sm" />
+                <Text
+                  size="sm"
+                  color="dimmed"
+                  style={{ fontStyle: "italic" }}
+                >
+                  Closing window automatically...
+                </Text>
+              </Group>
+            ) : (
+              <Alert
+                color="blue"
+                icon={<IconAlertCircle size={16} />}
+                style={{ textAlign: "center", width: "100%" }}
+              >
+                <Text size="sm" mb="md">
+                  You can now safely close this window
+                </Text>
+                <Button
+                  onClick={() => window.close()}
+                  size="lg"
+                  fullWidth
+                >
+                  Close Window
+                </Button>
+              </Alert>
+            )}
           </Stack>
         </Center>
       </Container>
@@ -1653,14 +1705,17 @@ const HRVideoExamLogin = () => {
   return null;
 };
 
-// Helper Component for Requirements
+// ============================================================
+// HELPER COMPONENT FOR REQUIREMENTS
+// ============================================================
+
 const RequirementItem = ({ icon, title, description }) => (
   <Group gap="md" align="flex-start">
     <Box
       style={{
         background: "rgba(255, 255, 255, 0.15)",
         borderRadius: 8,
-        padding: "10px",
+        padding: 10,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
