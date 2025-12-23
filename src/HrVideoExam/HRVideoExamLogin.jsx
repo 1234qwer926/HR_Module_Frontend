@@ -681,7 +681,7 @@ const HRVideoExamLogin = () => {
   };
 
   // ============================================================
-  // SUBMISSION HANDLER (UPDATED)
+  // SUBMISSION HANDLER
   // ============================================================
 
   const submitExam = async () => {
@@ -689,7 +689,6 @@ const HRVideoExamLogin = () => {
     setIsSubmitting(true);
 
     try {
-      // Show notification to user
       notifications.show({
         title: "📤 Submitting Your Responses",
         message: "Please wait while we process your answers...",
@@ -698,7 +697,6 @@ const HRVideoExamLogin = () => {
         id: "submitting-exam",
       });
 
-      // Add small delay to ensure UI updates before heavy processing
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       const batchDataWithS3Keys = await Promise.all(
@@ -748,10 +746,8 @@ const HRVideoExamLogin = () => {
 
       console.log("✅ Submission response:", submitResponse.data);
 
-      // Hide the submitting notification
       notifications.hide("submitting-exam");
 
-      // Show success notification
       notifications.show({
         title: "✅ Submission Complete",
         message: "Your exam has been successfully submitted!",
@@ -764,7 +760,6 @@ const HRVideoExamLogin = () => {
     } catch (err) {
       console.error("❌ Submission error:", err);
 
-      // Hide submitting notification
       notifications.hide("submitting-exam");
 
       setError(
@@ -781,6 +776,24 @@ const HRVideoExamLogin = () => {
       setIsSubmitting(false);
     }
   };
+
+  // ============================================================
+  // COMPLETION STAGE EFFECT (FIXED - TOP LEVEL)
+  // ============================================================
+  // ✅ THIS IS THE FIX: Hook at top level with conditional logic inside
+  useEffect(() => {
+    if (stage !== "completed") return; // Early exit if not completed
+
+    // Attempt to close the window
+    window.close();
+
+    // If window.close() fails (blocked by browser), show manual close button
+    const fallbackTimer = setTimeout(() => {
+      setShowManualClose(true);
+    }, 2000);
+
+    return () => clearTimeout(fallbackTimer);
+  }, [stage]); // Include stage in dependencies
 
   // ============================================================
   // RENDER STAGES
@@ -1046,10 +1059,7 @@ const HRVideoExamLogin = () => {
     );
   }
 
-  // ============================================================
   // PHOTO STAGE
-  // ============================================================
-
   if (stage === "photo") {
     return (
       <Container size="md" py="xl">
@@ -1127,10 +1137,7 @@ const HRVideoExamLogin = () => {
     );
   }
 
-  // ============================================================
   // VERIFICATION STAGE
-  // ============================================================
-
   if (stage === "verification") {
     return (
       <Container size="md" py="xl">
@@ -1203,10 +1210,7 @@ const HRVideoExamLogin = () => {
     );
   }
 
-  // ============================================================
   // EXAM STAGE
-  // ============================================================
-
   if (stage === "exam") {
     if (!browserSupportsSpeechRecognition) {
       return (
@@ -1426,7 +1430,7 @@ const HRVideoExamLogin = () => {
                 {progressPercentage}%
               </Text>
             </Group>
-            <Progress value={progressPercentage} color="blue" label={progressPercentage} />
+            <Progress value={progressPercentage} color="blue" />
           </Card>
 
           {/* Question Card */}
@@ -1598,7 +1602,7 @@ const HRVideoExamLogin = () => {
           </Card>
         </Container>
 
-        {/* Submitting Modal (UPDATED) */}
+        {/* Submitting Modal */}
         <Modal
           opened={isSubmitting}
           withCloseButton={false}
@@ -1629,24 +1633,8 @@ const HRVideoExamLogin = () => {
     );
   }
 
-  // ============================================================
-  // COMPLETED STAGE (UPDATED)
-  // ============================================================
-
+  // COMPLETED STAGE (FIXED)
   if (stage === "completed") {
-    // Try to close immediately on mount
-    useEffect(() => {
-      // Attempt to close the window
-      window.close();
-
-      // If window.close() fails (blocked by browser), show manual close button
-      const fallbackTimer = setTimeout(() => {
-        setShowManualClose(true);
-      }, 2000);
-
-      return () => clearTimeout(fallbackTimer);
-    }, []);
-
     return (
       <Container size="md" py="xl">
         <Center style={{ minHeight: "60vh" }}>
