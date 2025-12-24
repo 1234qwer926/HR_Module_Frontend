@@ -362,7 +362,9 @@ const HRVideoExamLogin = () => {
 
       console.log("Login response:", response.data);
 
-      const questionsData = response.data.video_questions || [];
+      // const questionsData = response.data.video_questions || [];
+      // Sorts the questions by ID in ascending order (16, 17, 18...)
+      const questionsData = (response.data.video_questions || []).sort((a, b) => a.id - b.id);
       const totalTime = calculateTotalExamTime(questionsData);
 
       setApplicationId(response.data.application_id);
