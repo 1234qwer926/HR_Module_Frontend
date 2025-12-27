@@ -171,8 +171,7 @@ function App() {
         } />
 
         {/* ============ FALLBACK ============ */}
-        <Route path="/error" element={<ErrorPage />} />
-        <Route path="*" element={<Navigate to="/error" replace />} />
+        <Route path="*" element={<ErrorPage />} />
       </Routes>
       <FooterLinks />
     </div>
