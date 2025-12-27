@@ -222,9 +222,9 @@ export function AuthenticationForm() {
         </form>
 
         {/* DIVIDER */}
-        <div style={styles.divider}>
+        {/* <div style={styles.divider}>
           <span style={styles.dividerText}>OR</span>
-        </div>
+        </div> */}
 
         {/* DEMO BUTTON */}
         {/* <button

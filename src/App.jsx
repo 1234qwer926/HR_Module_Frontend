@@ -47,6 +47,7 @@ import HRVideoExamLogin from './HrVideoExam/HRVideoExamLogin';
 import VideoQuestionsManagement from './HrVideoExam/VideoQuestionsManagement';
 import HRVideoExamEvaluation from './HrVideoExam/HRVideoExamEvaluation';
 import VideoExamEvaluation from './HrVideoExam/VideoExamEvaluation';
+import ErrorPage from './ErrorPage';
 
 
 function App() {
@@ -170,7 +171,8 @@ function App() {
         } />
 
         {/* ============ FALLBACK ============ */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/error" element={<ErrorPage />} />
+        <Route path="*" element={<Navigate to="/error" replace />} />
       </Routes>
       <FooterLinks />
     </div>
