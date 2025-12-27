@@ -33,6 +33,7 @@ import {
   IconMailForward,
   IconSortAscending,
   IconSortDescending,
+  IconFileTypePdf,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import api from '../utils/api';
@@ -79,6 +80,7 @@ export default function VideoExamEvaluation() {
   const [expandedRows, setExpandedRows] = useState({});
   const [updatingScores, setUpdatingScores] = useState(false);
   const [loadingVideoUrl, setLoadingVideoUrl] = useState(null);
+  const [loadingResume, setLoadingResume] = useState(null);
 
   // Store edited HR scores and feedback
   const [editedResponses, setEditedResponses] = useState({});
@@ -156,6 +158,44 @@ export default function VideoExamEvaluation() {
       });
     } finally {
       setLoadingVideoUrl(null);
+    }
+  };
+
+  // --------------------------------------------------
+  // Open resume in new tab
+  // --------------------------------------------------
+  const handleOpenResume = async (resumePath, appId) => {
+    if (!resumePath) {
+      notifications.show({
+        title: 'Error',
+        message: 'No resume path available',
+        color: 'red',
+      });
+      return;
+    }
+
+    setLoadingResume(appId);
+
+    try {
+      const data = await api.get(`/s3/get-url?key=${encodeURIComponent(resumePath)}`);
+      if (data.url) {
+        window.open(data.url, '_blank');
+      } else {
+        notifications.show({
+          title: 'Error',
+          message: 'Could not get resume URL',
+          color: 'red',
+        });
+      }
+    } catch (e) {
+      console.error('Error getting resume URL:', e);
+      notifications.show({
+        title: 'Error',
+        message: e.response?.data?.detail || 'Network error while getting resume URL',
+        color: 'red',
+      });
+    } finally {
+      setLoadingResume(null);
     }
   };
 
@@ -720,9 +760,11 @@ export default function VideoExamEvaluation() {
     const name = app.fullname || app.full_name || app.fullName || '-';
     const email = app.email || '-';
     const stage = app.currentstage || app.current_stage || app.currentStage || '-';
+    const resumepath=app.resumepath || app.resume_path || app.resumePath || null;
     const isExpanded = expandedRows[app.id] || false;
     const responseCount = (videoResponses[app.id] || []).length;
     const isSelected = selectedApps.includes(app.id);
+    const isLoadingResume = loadingResume === app.id;
 
     return (
       <React.Fragment key={app.id}>
@@ -743,6 +785,26 @@ export default function VideoExamEvaluation() {
           <Table.Td onClick={() => toggleExpand(app.id)}>{app.id}</Table.Td>
           <Table.Td onClick={() => toggleExpand(app.id)}>{name}</Table.Td>
           <Table.Td onClick={() => toggleExpand(app.id)}>{email}</Table.Td>
+          <Table.Td>
+            {resumepath ? (
+              <Tooltip label="Open resume in new tab">
+                <ActionIcon
+                  variant="light"
+                  color="blue"
+                  size="md"
+                  loading={isLoadingResume}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenResume(resumepath, app.id);
+                  }}
+                >
+                  <IconFileTypePdf size={18} />
+                </ActionIcon>
+              </Tooltip>
+            ) : (
+              <Text c="dimmed">-</Text>
+            )}
+          </Table.Td>
           <Table.Td onClick={() => toggleExpand(app.id)}>
             <Badge color={getStageColor(stage)} variant="light">
               {toTitleCase(stage)}
@@ -919,6 +981,7 @@ export default function VideoExamEvaluation() {
                 <Table.Th>ID</Table.Th>
                 <Table.Th>Name</Table.Th>
                 <Table.Th>Email</Table.Th>
+                <Table.Th>Resume</Table.Th>
                 <Table.Th>Stage</Table.Th>
                 {renderSortableHeader('CAT θ', 'cat_theta')}
                 {renderSortableHeader('CAT %ile', 'cat_percentile')}
