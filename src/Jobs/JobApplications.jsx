@@ -9,7 +9,7 @@ import {
 import {
   IconAlertCircle, IconArrowLeft, IconUser, IconMail, IconRefresh,
   IconEye, IconMailForward, IconSortAscending, IconSortDescending,
-  IconUpload, IconFileSpreadsheet, IconCheck, IconX
+  IconUpload, IconFileSpreadsheet, IconCheck, IconX, IconPdf
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import api from '../utils/api';
@@ -88,6 +88,7 @@ export default function JobApplications() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadResults, setUploadResults] = useState(null);
   const [uploadTab, setUploadTab] = useState('upload');
+  const [loadingResume, setLoadingResume] = useState(null);
 
 
   // Fetch job
@@ -263,7 +264,7 @@ export default function JobApplications() {
       }, 500);
 
       // ✅ No query parameters - job_id in body
-      const url = `https://mails-split-sec-units.trycloudflare.com/applications/bulk-upload?job_id=${id}`;
+      const url = `http://127.0.0.1:8000/applications/bulk-upload?job_id=${id}`;
 
       const res = await fetch(url, {
         method: 'POST',
@@ -301,6 +302,33 @@ export default function JobApplications() {
     } finally {
       setUploading(false);
       setUploadFile(null);
+    }
+  };
+
+
+  const handleResumeClick = async (appId, resumePath) => {
+    if (!resumePath) return;
+    setLoadingResume(appId);
+    try {
+      const data = await api.get(`/s3/get-url?key=${encodeURIComponent(resumePath)}`);
+      if (data.url) {
+        window.open(data.url, '_blank');
+      } else {
+        notifications.show({
+          title: 'Error',
+          message: 'Could not get resume URL',
+          color: 'red',
+        });
+      }
+    } catch (e) {
+      console.error('Error getting resume URL:', e);
+      notifications.show({
+        title: 'Error',
+        message: e.response?.data?.detail || 'Network error while getting resume URL',
+        color: 'red',
+      });
+    } finally {
+      setLoadingResume(null);
     }
   };
 
@@ -459,6 +487,7 @@ export default function JobApplications() {
                       Resume Score{' '}
                       {sortBy === 'resume_score' && (sortOrder === 'desc' ? <IconSortDescending size={14} /> : <IconSortAscending size={14} />)}
                     </Table.Th>
+                    <Table.Th>Resume</Table.Th>
                     <Table.Th onClick={() => toggleSort('cat_theta')} style={{ cursor: 'pointer' }}>
                       CAT θ{' '}
                       {sortBy === 'cat_theta' && (sortOrder === 'desc' ? <IconSortDescending size={14} /> : <IconSortAscending size={14} />)}
@@ -500,6 +529,21 @@ export default function JobApplications() {
                         >
                           {app.resume_score ? app.resume_score.toFixed(1) : '-'}
                         </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        {app.resume_path ? (
+                          <Tooltip label="View Resume">
+                            <ActionIcon
+                              onClick={() => handleResumeClick(app.id, app.resume_path)}
+                              loading={loadingResume === app.id}
+                              variant="subtle"
+                            >
+                              <IconPdf size={20} />
+                            </ActionIcon>
+                          </Tooltip>
+                        ) : (
+                          <Text c="dimmed">-</Text>
+                        )}
                       </Table.Td>
                       <Table.Td>
                         <Text fw={600}>{app.cat_theta ? app.cat_theta.toFixed(2) : '-'}</Text>

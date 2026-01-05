@@ -21,7 +21,7 @@ export default function CATResults() {
   const fetchResults = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://mails-split-sec-units.trycloudflare.com/cat/results/${applicationId}`, {
+      const response = await fetch(`http://127.0.0.1:8000/cat/results/${applicationId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

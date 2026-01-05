@@ -787,7 +787,7 @@ const CATExam = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post('https://mails-split-sec-units.trycloudflare.com/cat/next-item', { session_id: sessionId });
+      const response = await axios.post('http://127.0.0.1:8000/cat/next-item', { session_id: sessionId });
       setCurrentItem(response.data);
       setSelectedOption('');
       setItemStartTime(Date.now());
@@ -826,7 +826,7 @@ const CATExam = () => {
     const responseTime = Math.floor((Date.now() - itemStartTime) / 1000);
 
     try {
-      const response = await axios.post('https://mails-split-sec-units.trycloudflare.com/cat/submit-answer', {
+      const response = await axios.post('http://127.0.0.1:8000/cat/submit-answer', {
         session_id: sessionData.session_id,
         item_id: currentItem.item_id,
         selected_option: selectedOption,
@@ -895,7 +895,7 @@ const CATExam = () => {
     try {
       if (detectionIntervalRef.current) clearInterval(detectionIntervalRef.current);
 
-      const response = await axios.post('https://mails-split-sec-units.trycloudflare.com/cat/complete', {
+      const response = await axios.post('http://127.0.0.1:8000/cat/complete', {
         session_id: sessionId,
         face_violations: faceWarnings,
         tab_violations: windowWarnings
