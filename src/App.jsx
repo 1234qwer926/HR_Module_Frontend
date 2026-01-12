@@ -111,7 +111,7 @@ function App() {
 
         {/* ============ CAT (APTITUDE TEST) ROUTES ============ */}
         {/* Public - Candidates with exam key */}
-        <Route path="/exam/login/open" element={<ExamLogin />} />
+        <Route path="/exam/login" element={<ExamLogin />} />
         <Route path="/exam" element={<CATExam />} />
         <Route path="/exam/complete" element={<ExamComplete />} />
 
@@ -141,7 +141,7 @@ function App() {
 
         {/* ============ VIDEO INTERVIEW ROUTES ============ */}
         {/* Public - Candidates with exam key */}
-        <Route path="/hr-video-exam/open" element={<HRVideoExamLogin />} />
+        <Route path="/hr-video-exam" element={<HRVideoExamLogin />} />
 
         {/* Protected - Admin only */}
         <Route path="/video/record/:questionId" element={
