@@ -1469,7 +1469,7 @@ const HRVideoExamLogin = () => {
               )}
 
               {/* Live Transcript */}
-              {isRecording && (
+              {/* {isRecording && (
                 <Box mt="lg" p="md" style={{
                   border: "2px solid #667eea",
                   borderRadius: 8,
@@ -1536,7 +1536,7 @@ const HRVideoExamLogin = () => {
                     </Group>
                   )}
                 </Box>
-              )}
+              )} */}
 
               {/* Recording Buttons */}
               <Center mt="xl">
