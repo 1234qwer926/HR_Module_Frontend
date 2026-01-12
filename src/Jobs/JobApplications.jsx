@@ -264,7 +264,7 @@ export default function JobApplications() {
       }, 500);
 
       // ✅ No query parameters - job_id in body
-      const url = `http://127.0.0.1:8000/applications/bulk-upload?job_id=${id}`;
+      const url = `https://studies-liabilities-concord-generation.trycloudflare.com/applications/bulk-upload?job_id=${id}`;
 
       const res = await fetch(url, {
         method: 'POST',

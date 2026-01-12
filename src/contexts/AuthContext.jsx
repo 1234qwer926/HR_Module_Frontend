@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
     console.log('🔧 Setting up Axios interceptors...');
 
     // Configure axios defaults
-    axios.defaults.baseURL = 'http://127.0.0.1:8000';
+    axios.defaults.baseURL = 'https://studies-liabilities-concord-generation.trycloudflare.com';
     axios.defaults.withCredentials = true;
 
     // Add request interceptor to add Authorization header
