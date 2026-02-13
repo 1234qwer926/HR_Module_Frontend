@@ -21,7 +21,7 @@ export default function CATResults() {
   const fetchResults = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://studies-liabilities-concord-generation.trycloudflare.com/cat/results/${applicationId}`, {
+      const response = await fetch(`http://127.0.0.1:8001/cat/results/${applicationId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

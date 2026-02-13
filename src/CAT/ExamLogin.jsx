@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api'; // Import configured API client
 import './ExamLogin.css';
 
 const ExamLogin = () => {
@@ -26,23 +26,24 @@ const ExamLogin = () => {
     setError('');
 
     try {
-      const response = await axios.post('https://studies-liabilities-concord-generation.trycloudflare.com/cat/start', formData);
+      // Use configured API client instead of hardcoded URL
+      const data = await api.post('/cat/start', formData);
 
       // ✅ CRITICAL FIX: Check if session exists in localStorage first
       const existingSession = JSON.parse(localStorage.getItem('cat_session') || 'null');
-      
+
       let sessionData;
-      
-      if (existingSession && existingSession.session_id === response.data.session_id) {
+
+      if (existingSession && existingSession.session_id === data.session_id) {
         // ✅ RESUME EXISTING SESSION - USE SAVED TIME AND PROGRESS
         console.log('✓ Resuming existing session:', {
           session_id: existingSession.session_id,
           saved_time: existingSession.time_left,
           items_completed: existingSession.items_completed
         });
-        
+
         sessionData = {
-          ...response.data,
+          ...data,
           time_left: existingSession.time_left || 30 * 60, // Use saved time or default
           items_completed: existingSession.items_completed || 0,
           current_theta: existingSession.current_theta || 0.0,
@@ -52,7 +53,7 @@ const ExamLogin = () => {
         // ✅ NEW SESSION - USE DEFAULT VALUES
         console.log('✓ Starting new session with default values');
         sessionData = {
-          ...response.data,
+          ...data,
           time_left: 30 * 60, // 30 minutes in seconds
           items_completed: 0,
           current_theta: 0.0,

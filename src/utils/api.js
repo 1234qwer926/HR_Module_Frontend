@@ -12,7 +12,7 @@
 import axios from 'axios';
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://studies-liabilities-concord-generation.trycloudflare.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001';
 
 // Create axios instance
 const apiClient = axios.create({

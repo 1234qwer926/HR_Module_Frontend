@@ -47,7 +47,7 @@ import SpeechRecognition, {
 import * as faceapi from "face-api.js";
 import Webcam from "react-webcam";
 
-const API_BASE_URL = "https://studies-liabilities-concord-generation.trycloudflare.com";
+const API_BASE_URL = "http://127.0.0.1:8001";
 
 const HRVideoExamLogin = () => {
   // ============================================================
@@ -437,7 +437,7 @@ const HRVideoExamLogin = () => {
 
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: "video/webm; codecs=vp9,opus",
-        audioBitsPerSecond: 128000,
+        audioBitsPerSecond: 128001,
         videoBitsPerSecond: 2500000,
       });
 
@@ -490,7 +490,7 @@ const HRVideoExamLogin = () => {
             message:
               "Speech recognition may not be working. Check browser permissions and try Chrome/Edge.",
             color: "orange",
-            autoClose: 8000,
+            autoClose: 8001,
           });
         } else {
           notifications.show({

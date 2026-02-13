@@ -39,7 +39,7 @@ import {
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 
-const API_BASE_URL = 'https://studies-liabilities-concord-generation.trycloudflare.com';
+const API_BASE_URL = 'http://127.0.0.1:8001';
 
 const CATManagement = () => {
   // State Management

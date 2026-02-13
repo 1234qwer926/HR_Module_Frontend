@@ -27,7 +27,7 @@ export default function VideoReview() {
   const fetchVideos = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://studies-liabilities-concord-generation.trycloudflare.com/applications/${applicationId}/video-responses`, {
+      const response = await fetch(`http://127.0.0.1:8001/applications/${applicationId}/video-responses`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -61,7 +61,7 @@ export default function VideoReview() {
       const token = localStorage.getItem('token');
       const currentVideo = videos[currentVideoIndex];
 
-      const response = await fetch(`https://studies-liabilities-concord-generation.trycloudflare.com/video-responses/${currentVideo.id}`, {
+      const response = await fetch(`http://127.0.0.1:8001/video-responses/${currentVideo.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +161,7 @@ export default function VideoReview() {
             <video
               controls
               style={{ width: '100%', borderRadius: 8 }}
-              src={`https://studies-liabilities-concord-generation.trycloudflare.com${currentVideo.video_path}`}
+              src={`http://127.0.0.1:8001${currentVideo.video_path}`}
             />
           </Paper>
 

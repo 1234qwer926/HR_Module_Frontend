@@ -14,7 +14,7 @@ export function AuthenticationForm() {
     password: ''
   });
 
-  const API_BASE = 'https://studies-liabilities-concord-generation.trycloudflare.com';
+  const API_BASE = 'http://127.0.0.1:8001';
 
   /**
    * Handle Admin Login

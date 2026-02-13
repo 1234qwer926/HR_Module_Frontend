@@ -19,7 +19,7 @@ export default function ApplicationDetails() {
       setLoading(true);
       setErr(null);
       try {
-        const res = await fetch(`https://studies-liabilities-concord-generation.trycloudflare.com/applications/${applicationId}`);
+        const res = await fetch(`http://127.0.0.1:8001/applications/${applicationId}`);
         if (!res.ok) {
           const t = await res.text();
           throw new Error(t || 'Failed to load application');

@@ -111,7 +111,7 @@ function App() {
 
         {/* ============ CAT (APTITUDE TEST) ROUTES ============ */}
         {/* Public - Candidates with exam key */}
-        <Route path="/exam/login/open" element={<ExamLogin />} />
+        <Route path="/exam/login" element={<ExamLogin />} />
         <Route path="/exam" element={<CATExam />} />
         <Route path="/exam/complete" element={<ExamComplete />} />
 

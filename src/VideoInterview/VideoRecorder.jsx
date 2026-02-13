@@ -38,7 +38,7 @@ export default function VideoRecorder() {
       const token = localStorage.getItem('token');
 
       // Get application to find job_id
-      const appResponse = await fetch(`https://studies-liabilities-concord-generation.trycloudflare.com/applications/${applicationId}`, {
+      const appResponse = await fetch(`http://127.0.0.1:8001/applications/${applicationId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -48,7 +48,7 @@ export default function VideoRecorder() {
         console.log('Job ID:', jobId);
 
         // Get video questions for this job
-        const qResponse = await fetch(`https://studies-liabilities-concord-generation.trycloudflare.com/jobs/${jobId}/video-questions`, {
+        const qResponse = await fetch(`http://127.0.0.1:8001/jobs/${jobId}/video-questions`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -160,7 +160,7 @@ export default function VideoRecorder() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://studies-liabilities-concord-generation.trycloudflare.com/video-responses', {
+      const response = await fetch('http://127.0.0.1:8001/video-responses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

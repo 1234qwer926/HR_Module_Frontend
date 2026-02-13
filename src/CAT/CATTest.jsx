@@ -36,7 +36,7 @@ export default function CATTest() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://studies-liabilities-concord-generation.trycloudflare.com/cat/start/${applicationId}`, {
+      const response = await fetch(`http://127.0.0.1:8001/cat/start/${applicationId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -71,7 +71,7 @@ export default function CATTest() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://studies-liabilities-concord-generation.trycloudflare.com/cat/answer', {
+      const response = await fetch('http://127.0.0.1:8001/cat/answer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

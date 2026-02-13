@@ -19,7 +19,7 @@ export default function JobList() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      let url = 'https://studies-liabilities-concord-generation.trycloudflare.com/jobs';
+      let url = 'http://127.0.0.1:8001/jobs';
       const params = new URLSearchParams();
 
       if (filterStatus && filterStatus !== 'all') {

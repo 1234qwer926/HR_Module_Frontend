@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import * as faceapi from 'face-api.js';
 import * as tf from '@tensorflow/tfjs';
 import './CATExam.css';
@@ -787,8 +787,8 @@ const CATExam = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post('https://studies-liabilities-concord-generation.trycloudflare.com/cat/next-item', { session_id: sessionId });
-      setCurrentItem(response.data);
+      const data = await api.post('/cat/next-item', { session_id: sessionId });
+      setCurrentItem(data);
       setSelectedOption('');
       setItemStartTime(Date.now());
 
@@ -826,7 +826,7 @@ const CATExam = () => {
     const responseTime = Math.floor((Date.now() - itemStartTime) / 1000);
 
     try {
-      const response = await axios.post('https://studies-liabilities-concord-generation.trycloudflare.com/cat/submit-answer', {
+      const data = await api.post('/cat/submit-answer', {
         session_id: sessionData.session_id,
         item_id: currentItem.item_id,
         selected_option: selectedOption,
@@ -838,22 +838,22 @@ const CATExam = () => {
       console.log('[SUBMIT] Answer submitted successfully');
 
       const updatedStats = {
-        itemsCompleted: response.data.items_completed,
-        currentTheta: response.data.current_theta
+        itemsCompleted: data.items_completed,
+        currentTheta: data.current_theta
       };
       setStats(updatedStats);
 
       // Update session data with latest theta and time left
       const updatedSessionData = {
         ...sessionData,
-        current_theta: response.data.current_theta,
+        current_theta: data.current_theta,
         time_left: timeLeft,
-        items_completed: response.data.items_completed
+        items_completed: data.items_completed
       };
       setSessionData(updatedSessionData);
       localStorage.setItem('cat_session', JSON.stringify(updatedSessionData));
 
-      showFeedback(response.data.is_correct);
+      showFeedback(data.is_correct);
 
       console.log('[SUBMIT] Video state after stats update:', {
         paused: videoRef.current?.paused,
@@ -864,7 +864,7 @@ const CATExam = () => {
       // UPDATED: Check if this is the last question (20)
       if (currentItem.item_number === 20) {
         setTimeout(() => completeExam(sessionData.session_id), 1500);
-      } else if (response.data.should_continue) {
+      } else if (data.should_continue) {
         setTimeout(() => {
           console.log('[SUBMIT] Fetching next item');
           fetchNextItem(sessionData.session_id);
@@ -895,7 +895,7 @@ const CATExam = () => {
     try {
       if (detectionIntervalRef.current) clearInterval(detectionIntervalRef.current);
 
-      const response = await axios.post('https://studies-liabilities-concord-generation.trycloudflare.com/cat/complete', {
+      const data = await api.post('/cat/complete', {
         session_id: sessionId,
         face_violations: faceWarnings,
         tab_violations: windowWarnings
@@ -903,7 +903,7 @@ const CATExam = () => {
 
       cleanupAllResources();
       localStorage.removeItem('cat_session');
-      navigate('/exam/complete', { state: { results: response.data } });
+      navigate('/exam/complete', { state: { results: data } });
     } catch (err) {
       alert('Error completing exam.');
     }
@@ -1202,17 +1202,17 @@ const CATExam = () => {
 
             {/* UPDATED: Conditional button based on question number */}
             {currentItem.item_number === 20 ? (
-              <button 
-                className="submit-answer-button" 
-                onClick={submitAnswer} 
+              <button
+                className="submit-answer-button"
+                onClick={submitAnswer}
                 disabled={!selectedOption || submitting}
               >
                 {submitting ? 'Completing...' : 'Complete Exam'}
               </button>
             ) : (
-              <button 
-                className="submit-answer-button" 
-                onClick={submitAnswer} 
+              <button
+                className="submit-answer-button"
+                onClick={submitAnswer}
                 disabled={!selectedOption || submitting}
               >
                 {submitting ? 'Submitting...' : 'Submit Answer'}

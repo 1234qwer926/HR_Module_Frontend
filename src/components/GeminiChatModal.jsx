@@ -45,7 +45,7 @@ function GeminiChatModal() {
       // --- START OF UPDATE ---
       // Switched to axios and added withCredentials
       const response = await axios.post(
-        'https://studies-liabilities-concord-generation.trycloudflare.com/api/gemini/ask',
+        'http://127.0.0.1:8001/api/gemini/ask',
         prompt, // Sending the prompt string directly as the body
         {
           headers: {
